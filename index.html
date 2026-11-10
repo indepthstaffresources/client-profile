@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client Profile | Indepth Accounting</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+
+/* ===== Indepth staff tools app shell ===== */
+.ix-homebtn{display:inline-flex;align-items:center;gap:8px;font:600 13px var(--ix-font);color:var(--ix-deep);background:var(--ix-card);border:1px solid var(--ix-line);border-radius:10px;padding:9px 16px;text-decoration:none;box-shadow:0 1px 2px rgba(65,64,66,.05);transition:transform .15s,box-shadow .15s,border-color .15s}
+.ix-homebtn:hover{transform:translateY(-1px);border-color:var(--ix-sage);box-shadow:0 6px 16px rgba(65,64,66,.1)}
+.ix-homebtn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--ix-ring)}
+
+:root{--ix-sage:#94B6AB;--ix-deep:#56776C;--ix-deeper:#4A675D;--ix-ink:#414042;--ix-bg:#F2F6F4;--ix-card:#FFFFFF;--ix-line:#DCE6E2;--ix-muted:#5F6664;--ix-tint:#E8F0EC;--ix-ring:rgba(148,182,171,.55);
+  --ix-shadow:0 1px 2px rgba(65,64,66,.06),0 8px 28px rgba(65,64,66,.07);--ix-font:Montserrat,"Century Gothic",Arial,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ix-bg:#2B2A2C;--ix-card:#363537;--ix-line:#4A4A4D;--ix-muted:#BFC5C3;--ix-ink:#ECEFEE;--ix-tint:#3E4744;--ix-deep:#A9C7BD;--ix-shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.25)}}
+html,body{margin:0;min-height:100%}
+body.ix{background:var(--ix-bg)!important;color:var(--ix-ink);font-family:var(--ix-font)!important;-webkit-font-smoothing:antialiased}
+.ix-app{display:flex;min-height:100vh}
+.ix-side{position:sticky;top:0;height:100vh;flex:0 0 248px;background:#56776C;color:#fff;display:flex;flex-direction:column;padding:26px 16px 20px;box-sizing:border-box;z-index:5}
+.ix-brand{display:block;padding:0 10px 30px}
+.ix-brand img{height:30px;width:auto;display:block}
+.ix-links{display:flex;flex-direction:column;gap:3px}
+.ix-group{font-size:11px;font-weight:600;color:rgba(255,255,255,.62);letter-spacing:.06em;margin:20px 12px 6px}
+.ix-link{display:flex;align-items:center;gap:12px;color:rgba(255,255,255,.9);text-decoration:none;font-size:14px;font-weight:500;padding:10px 12px;border-radius:10px;transition:background .15s,color .15s}
+.ix-link:hover{background:rgba(255,255,255,.1);color:#fff}
+.ix-link[aria-current="page"]{background:#fff;color:#56776C;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.ix-link:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.ix-foot{margin-top:auto;font-size:11.5px;line-height:1.5;color:rgba(255,255,255,.6);padding:16px 12px 0;border-top:1px solid rgba(255,255,255,.18)}
+.ix-main{flex:1;min-width:0;display:flex;flex-direction:column}
+header.ix-top,.ix-top{background:transparent!important;color:var(--ix-ink)!important;border:0!important;box-shadow:none!important;position:static!important;margin:0!important}
+.ix-top h1,.ix-top .ix-h1{border:0!important;padding:0!important;text-transform:none!important;letter-spacing:-.01em!important}
+.ix-top img{display:none}
+.ix-top{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:26px 40px 8px;max-width:1320px;width:100%;box-sizing:border-box}
+.ix-h1{margin:0;font:600 24px/1.25 var(--ix-font);color:var(--ix-ink);letter-spacing:-.01em}
+.ix-sub{margin:4px 0 0;font-size:14px;color:var(--ix-muted);max-width:70ch}
+.ix-slot{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ix-card{background:var(--ix-card);border-radius:16px;box-shadow:var(--ix-shadow);border:1px solid var(--ix-line)}
+@media (prefers-reduced-motion:no-preference){.ix-main>*{animation:ixIn .45s cubic-bezier(.2,.7,.2,1) both}.ix-main>*:nth-child(2){animation-delay:.05s}@keyframes ixIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}}
+@media (max-width:900px){.ix-app{flex-direction:column}.ix-side{position:sticky;height:auto;flex:none;flex-direction:row;align-items:center;padding:10px 12px;gap:8px;overflow-x:auto}.ix-brand{padding:0 8px 0 4px}.ix-brand img{height:22px}.ix-links{flex-direction:row}.ix-group,.ix-foot{display:none}.ix-link{white-space:nowrap;padding:8px 10px;font-size:13px}.ix-link svg{display:none}.ix-top{padding:18px 18px 4px}}
+
+:root{--warn:#9A5B2E;--warnbg:#FBF3EC}
+.wrap{max-width:1320px;width:100%;box-sizing:border-box;padding:14px 40px 60px;display:flex;flex-direction:column;gap:20px}
+.card{background:var(--ix-card);border:1px solid var(--ix-line);border-radius:18px;box-shadow:var(--ix-shadow);padding:24px 26px}
+.card h2{margin:0 0 4px;font:600 17px var(--ix-font);display:flex;align-items:center;gap:10px}
+.card h2 .n{width:26px;height:26px;border-radius:50%;background:#56776C;color:#fff;font-size:12.5px;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(86,119,108,.3)}
+.card .lead{margin:0 0 16px;color:var(--ix-muted);font-size:13.5px;max-width:80ch}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:500;color:var(--ix-muted)}
+input[type=text],input[type=search],textarea{font:inherit;font-size:14px;color:var(--ix-ink);background:var(--ix-card);border:1px solid var(--ix-line);border-radius:10px;padding:10px 12px;transition:border-color .15s,box-shadow .15s}
+input:focus,textarea:focus{outline:none;border-color:var(--ix-sage);box-shadow:0 0 0 4px var(--ix-ring)}
+.btn{font:600 13.5px var(--ix-font);border:1px solid #56776C;background:#56776C;color:#fff;border-radius:10px;padding:10px 18px;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.btn:not([disabled]):hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(86,119,108,.25)}
+.btn.ghost{background:var(--ix-card);color:var(--ix-deep)}
+.btn.ghost:not([disabled]):hover{box-shadow:none;background:var(--ix-tint)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.small{padding:6px 12px;font-size:12.5px}
+.link{background:none;border:0;color:var(--ix-deep);text-decoration:underline;cursor:pointer;font:inherit;font-size:13px;padding:0}
+.notice{border:1px solid var(--ix-line);border-left:4px solid var(--ix-sage);background:var(--ix-card);border-radius:12px;padding:12px 16px;font-size:13.5px;box-shadow:var(--ix-shadow)}
+.notice.warn{border-left-color:var(--warn);background:var(--warnbg)}
+.drop{border:2px dashed var(--ix-sage);border-radius:14px;padding:16px;text-align:center;color:var(--ix-deep);font-size:13.5px;cursor:pointer;background:var(--ix-bg)}
+.drop.over{background:var(--ix-tint)}
+.files{list-style:none;margin:14px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:6px 18px;font-size:12.5px;max-height:220px;overflow:auto}
+.files li{display:flex;gap:8px;align-items:baseline;color:var(--ix-muted)}
+.files li b{font-weight:500;color:var(--ix-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px}
+.files .k{font-size:11px;padding:1px 8px;border-radius:20px;background:var(--ix-tint);color:var(--ix-deep);white-space:nowrap}
+.files .k.no{background:transparent;border:1px solid var(--ix-line);color:var(--ix-muted)}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--ix-tint);border-top-color:#56776C;border-radius:50%;animation:s .8s linear infinite;vertical-align:-2px;margin-right:7px}
+@keyframes s{to{transform:rotate(360deg)}}
+.alerts{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.alert{border-left:4px solid var(--warn);background:var(--warnbg);border-radius:10px;padding:10px 14px;font-size:13px;color:#5E3A1D}
+@media (prefers-color-scheme:dark){.alert{color:#F3DCC8}}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px 22px}
+.fld{display:flex;flex-direction:column;gap:4px}
+.fld .lab{font-size:11.5px;font-weight:600;color:var(--ix-muted);display:flex;justify-content:space-between;gap:8px}
+.fld input{padding:8px 10px;font-size:13.5px}
+.fld .src{font-size:11px;color:var(--ix-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fld .prev{font-size:11px;color:var(--warn)}
+.fld.missing input{border-style:dashed}
+.copy{background:none;border:0;color:var(--ix-deep);cursor:pointer;font-size:11px;padding:0}
+h3{font:600 14px var(--ix-font);margin:22px 0 10px;color:var(--ix-deep)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11.5px;font-weight:600;color:var(--ix-muted);padding:6px 8px;border-bottom:1px solid var(--ix-line)}
+td{padding:4px 6px;border-bottom:1px solid var(--ix-line);vertical-align:top}
+td input{width:100%;box-sizing:border-box;border:1px solid transparent;background:transparent;padding:6px 6px;border-radius:8px;font-size:13px}
+td input:hover{border-color:var(--ix-line)}
+td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--warnbg);color:var(--warn);white-space:nowrap}
+.tablewrap{overflow-x:auto}
+.mask{letter-spacing:.15em;color:var(--ix-muted)}
+.longtext{font-size:12.5px;color:var(--ix-ink);background:var(--ix-bg);border-radius:10px;padding:10px 12px;line-height:1.55}
+.exports{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.checks{display:flex;gap:20px;flex-wrap:wrap;font-size:13.5px;margin:4px 0 14px}
+.checks label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.checks input{accent-color:#56776C;width:16px;height:16px}
+.hidden{display:none!important}
+.ix-slot #who{font-size:13px;color:var(--ix-muted);font-weight:500}
+.ix-slot #signin{font:600 13px var(--ix-font);background:#56776C;color:#fff;border:0;border-radius:10px;padding:10px 18px;cursor:pointer}
+@media (max-width:900px){.wrap{padding:10px 16px 40px}}
+</style>
+</head>
+<body class="ix">
+<div class="ix-app">
+<nav class="ix-side" aria-label="Staff tools"><a class="ix-brand" href="/"><img src="data:image/png;base64,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" alt="Indepth Accounting"></a><div class="ix-links"><a class="ix-link" href="/"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z"/></svg><span>Home</span></a><span class="ix-group">Compliance work</span><a class="ix-link" href="/collation/"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="3" width="12" height="15" rx="1.5"/><path d="M4 7v12.5A1.5 1.5 0 0 0 5.5 21H15M9 8h6M9 11h6M9 14h3"/></svg><span>Collation</span></a><a class="ix-link" href="/filing/"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5v8A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M12 11v5M9.5 13.5 12 16l2.5-2.5"/></svg><span>Document Filing</span></a><a class="ix-link" href="/client-profile/" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16c.6-1.6 1.8-2.4 3.2-2.4s2.6.8 3.2 2.4M14 10h4M14 13h3"/></svg><span>Client Profile</span></a><span class="ix-group">Client documents</span><a class="ix-link" href="/certify/"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M8.5 7h7M8.5 10h4"/><circle cx="14" cy="15.5" r="2.5"/></svg><span>Certification</span></a><a class="ix-link" href="/redaction/"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3v5h5"/><rect x="8" y="11" width="8" height="2" fill="currentColor"/><rect x="8" y="15" width="5" height="2" fill="currentColor"/></svg><span>PDF Redaction</span></a><a class="ix-link" href="/org-chart/"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="4.5" rx="1"/><rect x="3" y="16.5" width="6" height="4.5" rx="1"/><rect x="15" y="16.5" width="6" height="4.5" rx="1"/><path d="M12 7.5V12M6 16.5V12h12v4.5"/></svg><span>Structure Mapper</span></a></div><span class="ix-foot">Indepth Accounting<br>Staff tools</span></nav>
+<div class="ix-main">
+<header class="ix-top"><div class="ix-titles"><h1 class="ix-h1">Client Profile</h1><p class="ix-sub">Builds an onboarding profile from the client's ASIC, CAS 360 and trust documents in SuiteFiles, ready for Karbon, XPM and CAS 360.</p></div><div class="ix-slot"><a class="ix-homebtn" href="/"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z"/></svg><span>Home</span></a><span id="who"></span><button id="signin" type="button">Sign in with Microsoft</button></div></header>
+<div class="wrap">
+  <div id="msg"></div>
+
+  <section class="card">
+    <h2><span class="n">1</span>Choose the client</h2>
+    <p class="lead">Reads the client's Corporate Compliance, Permanent, AML, CAS-360 and Engagement folders, plus the last two years of tax returns. The newest dated document wins for every detail.</p>
+    <div class="row">
+      <label class="f" style="flex:1 1 360px">Client folder<input type="search" id="client" list="clientList" placeholder="Start typing a client name" autocomplete="off"></label>
+      <button class="btn" id="read" type="button" disabled>Read documents</button>
+    </div>
+    <div class="drop" id="drop" tabindex="0" role="button" style="margin-top:14px">Or drop documents here from your computer (they're read alongside SuiteFiles)</div>
+    <input type="file" id="file" multiple hidden accept=".pdf,.docx,.png,.jpg,.jpeg">
+    <div id="progress" class="hidden" style="margin-top:12px;font-size:13px"></div>
+    <ul class="files" id="files"></ul>
+  </section>
+
+  <section class="card hidden" id="profileCard">
+    <h2><span class="n">2</span><span id="pTitle">Profile</span></h2>
+    <p class="lead">Check every detail before using it. Change anything that's wrong; the exports use what's on screen. Each detail shows the document it came from.</p>
+    <div class="checks">
+      <label><input type="checkbox" id="showSens">Show sensitive details (TFN, dates and places of birth, Director IDs)</label>
+    </div>
+    <div class="alerts" id="alerts"></div>
+    <div id="profile"></div>
+  </section>
+
+  <section class="card hidden" id="exportCard">
+    <h2><span class="n">3</span>Use it</h2>
+    <p class="lead">One spreadsheet with a tab each for Karbon (organisations and people), XPM (client and relationships) and CAS 360 (company, officers, members, trust), plus a profile PDF for SuiteFiles.</p>
+    <div class="checks"><label><input type="checkbox" id="inclSens">Include sensitive details in the spreadsheet and PDF</label></div>
+    <div class="exports">
+      <button class="btn" id="xlsx" type="button">Download spreadsheet</button>
+      <button class="btn" id="savePdf" type="button">Save profile PDF to SuiteFiles</button>
+      <button class="btn ghost" id="dlPdf" type="button">Download PDF</button>
+      <button class="btn ghost" id="copyKarbon" type="button">Copy summary for Karbon</button>
+      <span id="exportMsg" style="font-size:13px;color:var(--ix-deep)"></span>
+    </div>
+  </section>
+  <p style="font-size:12px;color:var(--ix-muted);margin:0 4px">Documents are read in your browser. Nothing is sent anywhere except a profile PDF you choose to save to SuiteFiles under your own sign-in.</p>
+</div>
+</div>
+</div>
+<datalist id="clientList"></datalist>
+<script>/* Indepth Client Profile: reads company and trust documents and builds one profile.
+   Every fact keeps its source document and date; the newest dated source wins. Runs in browser and Node. */
+(function (root) {
+  "use strict";
+  const MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12, january: 1, february: 2, march: 3, april: 4, june: 6, july: 7, august: 8, september: 9, october: 10, november: 11, december: 12 };
+  const MRE = "(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sept?(?:ember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)";
+  const D = "(\\d{1,2}\\/\\d{1,2}\\/\\d{4})";
+  function mk(y, m, d) { y = +y; m = +m; d = +d; if (y < 100) y += 2000; if (!(y > 1900 && y < 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null; const t = new Date(Date.UTC(y, m - 1, d)); return t.getUTCDate() === d ? t.toISOString().slice(0, 10) : null; }
+  function pd(s) {
+    if (!s) return null; s = String(s).trim(); let m;
+    if ((m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/))) return mk(m[3], m[2], m[1]);
+    if ((m = s.match(new RegExp("^(\\d{1,2})(?:st|nd|rd|th)?\\s+" + MRE + ",?\\s+(\\d{4})$", "i")))) return mk(m[3], MON[m[2].toLowerCase()], m[1]);
+    if ((m = s.match(new RegExp("^" + MRE + "\\s+(\\d{1,2}),?\\s+(\\d{4})$", "i")))) return mk(m[3], MON[m[1].toLowerCase()], m[2]);
+    if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/))) return mk(m[1], m[2], m[3]);
+    return null;
+  }
+  const ANYD = new RegExp("(\\d{1,2}\\/\\d{1,2}\\/\\d{4}|\\d{1,2}(?:st|nd|rd|th)?\\s+" + MRE + ",?\\s+\\d{4})", "i");
+  function firstDate(t) { const m = (t || "").match(ANYD); return m ? pd(m[1]) : null; }
+  const flat = (s) => (s || "").replace(/\u00a0/g, " ").replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, " ").trim();
+  function title(s) {
+    if (!s) return "";
+    s = s.trim().replace(/\s+/g, " ");
+    if (s !== s.toUpperCase()) return s;
+    return s.toLowerCase().replace(/(^|[\s\-'(&\/])([a-z])/g, (a, p, c) => p + c.toUpperCase())
+      .replace(/\bPty\b/g, "Pty").replace(/\bLtd\b/g, "Ltd").replace(/\bAtf\b/g, "ATF").replace(/\bSmsf\b/g, "SMSF")
+      .replace(/\b(Qld|Nsw|Vic|Wa|Sa|Tas|Act|Nt)\b(?=\s+\d{4}|$)/g, (x) => x.toUpperCase()).replace(/\bPo Box\b/g, "PO Box").replace(/\bBc\b/g, "BC")
+      .replace(/\bMc([a-z])/g, (a, c) => "Mc" + c.toUpperCase());
+  }
+  const abnFmt = (s) => { const d = (s || "").replace(/\D/g, ""); return d.length === 11 ? d.replace(/(\d{2})(\d{3})(\d{3})(\d{3})/, "$1 $2 $3 $4") : ""; };
+  const acnFmt = (s) => { const d = (s || "").replace(/\D/g, ""); return d.length === 9 ? d.replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3") : ""; };
+  const pick = (t, re) => { const m = t.match(re); return m ? flat(m[1]) : ""; };
+  const key = (n) => (n || "").toLowerCase().replace(/[^a-z]/g, "");
+
+  /* ---------- classify ---------- */
+  function classify(text, name) {
+    const t = flat(text).slice(0, 6000), n = name || "";
+    if (/Client Profile/i.test(n)) return "skip";
+    if (/Current (?:& Historical )?(?:Organisation|Company) Extract|ASIC Current|Historical Organisation Extract/i.test(t) && /Company Officers|Office ?holders/i.test(flat(text))) return "asic_extract";
+    if (/REGISTER OF DIRECTORS (?:&|AND) SECRETARIES/i.test(flat(text)) || /REGISTER OF MEMBERS AS AT/i.test(flat(text)) || /CONSENT TO ACT AS/i.test(flat(text)) || /Document Type: Directors Resolution/i.test(flat(text))) return "cas_pack";
+    if (/Application for registration as an Australian company|Form 201/i.test(t)) return "form201";
+    if (/Certificate of Registration\b.{0,40}?of a Company/i.test(t)) return "cert_reg";
+    if (/Deed of (?:Retirement|Appointment|Change)|(?:Change|Retirement|Appointment|Replacement) of (?:a |new )?(?:Trustee|Appointor)/i.test(t)) return "trustee_change";
+    if (/Deed of (?:Variation|Amendment)/i.test(t)) return "variation";
+    if (/Family trust election/i.test(t)) return "fte";
+    if (/Trust Deed|Deed of Settlement|Discretionary Trust|Unit Trust Deed|Superannuation Fund Deed|Trust Instrument/i.test(t) || /Item \d+:\s+(?:Deed Date|Name of Trust|Trustee)/i.test(flat(text))) return "trust_deed";
+    if (/ABN Advice|Australian Business Register|ABN Lookup|Current details for ABN/i.test(t)) return "abn";
+    if (/Powered by Ignition|Document ID\s+prop_/i.test(t)) return "engagement";
+    if (/Tax Return \d{4}|TFN Recorded/i.test(t)) return "tax_return";
+    if (/Trustee declaration/i.test(t)) return "trustee_decl";
+    if (/Consent to Act|Member\/?s Resolution|Register of Directors|Register of Members/i.test(t)) return "cas_pack";
+    return "other";
+  }
+
+  /* ---------- parsers: each returns { date, facts } ---------- */
+  // fact: { field, value, date, kind }  officer events: { person, role, appointed, ceased, date }
+  function personSplit(chunk) {
+    // "Andrew John Thompson 40 Andante Crescent, Palmview, QLD 4553" -> name + address
+    const m = chunk.match(/^(.+?)\s+((?:Unit|Level|Lot|Shop|Suite|PO Box|P\.?O\.? Box|U\d|\d).*)$/i);
+    return m ? { name: m[1].trim(), address: m[2].replace(/\s*,\s*$/, "").trim() } : { name: chunk.trim(), address: "" };
+  }
+
+  function parseAsicExtract(text) {
+    const t = flat(text);
+    const out = { kind: "asic_extract", label: "ASIC extract", date: pd(pick(t, /(?:Data Extracted|Extracted on|Date of extract|Search Date)\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{4})/i)) || firstDate(t), company: {}, officers: [], shares: [], members: [], docs: [] };
+    const c = out.company;
+    c.name = title(pick(t, /Current Name:\s+(.+?)\s+(?:Registered in:|Name Start|Status:)/i) || pick(t, /\bName:\s+(.+?)\s+(?:[0-9][A-Z0-9]{8}\s+)?Name Start Date/i));
+    c.acn = acnFmt(pick(t, /ACN(?: \(Australian Company Number\))?:?\s+(\d{3} ?\d{3} ?\d{3})/i));
+    c.abn = abnFmt(pick(t, /\bABN:\s+(\d{2} ?\d{3} ?\d{3} ?\d{3})/i));
+    c.state = pick(t, /Registered in:\s+(.+?)\s+Registration Date/i);
+    c.registered = pd(pick(t, /Registration Date:\s+(\d{1,2}\/\d{1,2}\/\d{4})/i));
+    c.review = pd(pick(t, /Review Date:\s+(\d{1,2}\/\d{1,2}\/\d{4})/i));
+    c.status = pick(t, /Status:\s+(.+?)\s+Type:/i);
+    c.type = pick(t, /Type:\s+(.+?)\s+Class:/i);
+    c.cls = pick(t, /Class:\s+(.+?)\s+Sub Class:/i);
+    c.subclass = pick(t, /Sub Class:\s+(.+?)\s+-/i);
+    const ro = t.match(/Registered Office\s+(?:[0-9][A-Z0-9]{8}\s+)?Address:\s+(.+?)\s+Start Date:\s+(\d{1,2}\/\d{1,2}\/\d{4})/i);
+    if (ro) { c.regOffice = title(ro[1]); c.regOfficeFrom = pd(ro[2]); }
+    const pp = t.match(/Principal Place of Business\s+(?:[0-9][A-Z0-9]{8}\s+)?Address:\s+(.+?)\s+Start Date:\s+(\d{1,2}\/\d{1,2}\/\d{4})/i);
+    if (pp) { c.ppb = title(pp[1]); c.ppbFrom = pd(pp[2]); }
+    const ca = t.match(/Contact Address for ASIC use only\s+Address:\s+(.+?)\s+Start Date/i); if (ca) c.postal = title(ca[1]);
+    const uhc = t.match(/Ultimate Holding Company\s*-?\s*Name:\s+(.+?)\s+(?:ACN|ABN)/i); if (uhc) c.holding = title(uhc[1]);
+    // officers
+    const oStart = t.search(/Company Officers/i), oEnd = t.search(/Share Structure|Share\/Interest Holding/i);
+    const osec = oStart >= 0 ? t.slice(oStart, oEnd > oStart ? oEnd : undefined) : "";
+    const ore = /Name:\s+(.+?)\s+(?:[0-9][A-Z0-9]{8}\s+)?Address:\s+(.+?)\s+Birth Details:\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(.*?)\s+Appointment Date:\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+Cease Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})?/gi;
+    let m;
+    while ((m = ore.exec(osec))) {
+      const before = osec.slice(0, m.index);
+      const roles = [...before.matchAll(/\b(Alternate Director|Director|Secretary|Public Officer)\b/gi)];
+      const role = roles.length ? title(roles[roles.length - 1][1]) : "Director";
+      out.officers.push({ name: title(m[1]), address: title(m[2]), dob: pd(m[3]), pob: title(m[4]), role, appointed: pd(m[5]), ceased: pd(m[6] || "") });
+    }
+    // share classes
+    const shareSec = t.slice(Math.max(0, t.search(/Share Structure/i)));
+    const sre = /Class:\s+([A-Z][A-Za-z0-9 ]{1,40}?)\s+(?:[0-9][A-Z0-9]{8}\s+)?Number of Shares Issued:\s+([\d,]+)\s+Total Amount Paid \/ Taken to be Paid:\s+\$([\d,.]+)\s+Total Amount Due and Payable:\s+\$([\d,.]+)/gi;
+    while ((m = sre.exec(shareSec))) out.shares.push({ cls: title(m[1]), issued: +m[2].replace(/,/g, ""), paid: m[3], unpaid: m[4] });
+    // holdings
+    const hre = /Class:\s+(\S+)\s+Number Held:\s+([\d,]+)\s+(?:[0-9][A-Z0-9]{8}\s+)?Beneficially Owned:\s+(Yes|No)\s+Fully Paid:\s+(Yes|No)\s+-?\s*Members?\s*-?\s+(.+?)\s+Joint Holding:\s+(Yes|No)/gi;
+    while ((m = hre.exec(t))) {
+      const people = [...m[5].matchAll(/Name:\s+(.+?)\s+(?:ACN: [\d ]+\s+)?Address:\s+(.+?)(?=\s+Name:|$)/gi)].map((p) => ({ name: title(p[1]), address: title(p[2]) }));
+      out.members.push({ cls: m[1], number: +m[2].replace(/,/g, ""), beneficial: m[3] === "Yes", fullyPaid: m[4] === "Yes", holders: people, joint: m[6] === "Yes" });
+    }
+    // lodged documents
+    const dre = /\b(\d{3}[A-Z0-9]?)\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})\s+\d+\s+(\d{2}\/\d{2}\/\d{4})\s+([0-9][A-Z0-9]{8})/g;
+    while ((m = dre.exec(t))) out.docs.push({ form: m[1], received: pd(m[2]), effective: pd(m[4]), no: m[5] });
+    return out;
+  }
+
+  function parseCasPack(text) {
+    const t = flat(text);
+    const out = { kind: "cas_pack", label: "CAS 360 registers", date: null, company: {}, officers: [], events: [], members: [], publicOfficer: null, directorIds: {} };
+    out.company.name = title(pick(t, /Company Name:\s+(.+?)\s+ACN/i) || pick(t, /^(.+?)\s+Company Number/i));
+    out.company.acn = acnFmt(pick(t, /(?:Company Number|ACN\/ARBN|ACN):?\s+(\d{3} ?\d{3} ?\d{3})/i));
+    // register of directors and secretaries
+    const rd = t.match(/REGISTER OF DIRECTORS (?:&|AND) SECRETARIES AS AT (\d{1,2}\/\d{1,2}\/\d{4})(.*?)(?=Company Name:|REGISTER OF MEMBERS|CONSENT TO ACT|RESIGNATION OF|Dear |$)/i);
+    if (rd) {
+      out.date = pd(rd[1]);
+      const body = rd[2].replace(/^.*?Notes\s+/i, "");
+      const re = /(.+?)\s*,\s*(\d{1,2}\/\d{1,2}\/\d{4})\s+([A-Z][A-Z .'\-]+?)\s+((?:(?:Alternate Director|Director|Secretary|Public Officer)\s+\d{1,2}\/\d{1,2}\/\d{4}(?:\s+\d{1,2}\/\d{1,2}\/\d{4})?(?:\s+(?:Non Attendee|Attendee))?\s*)+)/g;
+      let m;
+      while ((m = re.exec(body))) {
+        const ps = personSplit(m[1].replace(/^,\s*/, ""));
+        const posRe = /(Alternate Director|Director|Secretary|Public Officer)\s+(\d{1,2}\/\d{1,2}\/\d{4})(?:\s+(\d{1,2}\/\d{1,2}\/\d{4}))?/g; let q;
+        while ((q = posRe.exec(m[4]))) out.officers.push({ name: title(ps.name), address: title(ps.address), dob: pd(m[2]), pob: title(m[3]), role: title(q[1]), appointed: pd(q[2]), ceased: pd(q[3] || "") });
+      }
+    }
+    // register of members
+    const rm = t.match(/REGISTER OF MEMBERS AS AT (\d{1,2}\/\d{1,2}\/\d{4})(.*?)(?=REGISTER OF DIRECTORS|CONSENT TO ACT|Company Name:|ALLOTMENT JOURNAL|SHARE CERTIFICATE|$)/i);
+    if (rm) {
+      out.date = out.date && out.date > pd(rm[1]) ? out.date : pd(rm[1]);
+      const re = /(.+?)\s+([A-Z0-9]{1,6})\s+-\s+([A-Z0-9 ]+?SHARES)\s+Date of Entry:\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+Date of Cessation:\s*(\d{1,2}\/\d{1,2}\/\d{4})?(.*?)(?=\s+[A-Z][a-z]+(?: [A-Z][a-z'\-]+)+(?: <[^>]*>)?\s+(?:Unit|Level|PO Box|\d)|$)/g;
+      let m;
+      while ((m = re.exec(rm[2]))) {
+        let who = m[1].replace(/^.*?Benef\. Held Y\/N\s+\S+.*?\s(?=[A-Z][a-z])/, "");
+        const ben = who.match(/<\s*Beneficially Held by\s+(.+?)\s*>/i) || who.match(/<\s*(.+?)\s*>/);
+        who = who.replace(/<[^>]*>/g, " ");
+        const ps = personSplit(flat(who));
+        const rows = [...m[6].matchAll(/(\d{1,2}\/\d{1,2}\/\d{4})\s+(Balance|Allotment|Transfer(?: In| Out)?|Cancellation|Buy Back|Conversion)\s+(\d+)\s+(\d+)?.*?\$([\d.,]+)\s+\$([\d.,]+)\s+([YN])\b/g)];
+        const last = rows[rows.length - 1];
+        out.members.push({ cls: m[2], className: title(m[3]), holders: [{ name: title(ps.name), address: title(ps.address) }], number: last ? +(last[4] || last[3]) : null, paidPer: last ? last[5] : "", unpaidPer: last ? last[6] : "", beneficial: last ? last[7] === "Y" : !ben, onBehalfOf: ben ? title(ben[1]) : "", entered: pd(m[4]), ceased: pd(m[5] || "") });
+      }
+    }
+    // consents to act
+    for (const m of t.matchAll(/CONSENT TO ACT AS ([A-Z ,&]+?)\s+AND STATUTORY INFORMATION.*?Full Name\s+(.+?)\s+Residential Address\s+(.+?)\s+Date of Birth\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+Place of Birth\s+(.+?)\s+Appointment Date\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+Director ID\s+(\d{15}|Director ID number not provided|\S+)/gi)) {
+      const roles = m[1].split(/,|&|AND/i).map((x) => title(x.trim())).filter(Boolean);
+      for (const role of roles) out.events.push({ type: "appoint", role, name: title(m[2]), address: title(m[3]), dob: pd(m[4]), pob: title(m[5]), date: pd(m[6]) });
+      if (/^\d{15}$/.test(m[7])) out.directorIds[key(m[2])] = m[7];
+    }
+    // older consent format (Acis incorporation packs)
+    for (const m of t.matchAll(/consent to act as (?:a )?([A-Za-z ,]+?) of the Company.*?Full Name:\s+(.+?)\s+Residential Address:\s+(.+?)\s+(?:Former Name\/s:\s+.*?)?Date of Birth:\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+Place of Birth:\s+(.+?)\s+Dated:\s+(\d{1,2}\/\d{1,2}\/\d{4})/gi)) {
+      for (const role of m[1].split(/,|\band\b/i).map((x) => title(x.trim())).filter(Boolean)) out.events.push({ type: "appoint", role, name: title(m[2]), address: title(m[3]), dob: pd(m[4]), pob: title(m[5]), date: pd(m[6]) });
+    }
+    // directors resolutions
+    for (const m of t.matchAll(/Appointment of (Director|Secretary|Public Officer)s?:.*?be appointed:\s+(.+?), appointment effective from (\d{1,2}\/\d{1,2}\/\d{4})/gi)) out.events.push({ type: "appoint", role: title(m[1]), name: title(m[2]), date: pd(m[3]) });
+    for (const m of t.matchAll(/Resignation of (Director|Secretary|Public Officer)s?:.*?be accepted:\s+(.+?), resignation effective from (\d{1,2}\/\d{1,2}\/\d{4})/gi)) out.events.push({ type: "cease", role: title(m[1]), name: title(m[2]), date: pd(m[3]) });
+    for (const m of t.matchAll(/RESIGNATION OF (DIRECTOR|SECRETARY)\s+I hereby resign as the (?:Director|Secretary) of .+? effective from (\d{1,2}\/\d{1,2}\/\d{4})\..*?_+\s+(.+?)\s+\/Digital/gi)) out.events.push({ type: "cease", role: title(m[1]), name: title(m[3]), date: pd(m[2]) });
+    const po = t.match(/([A-Z][A-Za-z'\-]+(?: [A-Z][A-Za-z'\-]+){1,3}) was appointed as the Public Officer/); if (po) out.publicOfficer = title(po[1]);
+    if (!out.date) { const ds = out.events.map((e) => e.date).filter(Boolean).sort(); out.date = ds[ds.length - 1] || firstDate(t); }
+    return out;
+  }
+
+  function parseForm201(text) {
+    const t = flat(text);
+    const out = { kind: "form201", label: "Form 201 incorporation", date: pd(pick(t, /Date (?:signed )?(\d{1,2}\/\d{1,2}\/\d{4})/i)) || firstDate(t), company: {}, officers: [], members: [] };
+    const nm = pick(t, /proposed company name\W+([A-Za-z0-9&'\- ]{2,60}?)\s+Name reservation/i);
+    const le = pick(t, /Legal elements to apply:?\s+(Pty\.? Ltd\.?|Pty\.? Limited|Limited|Ltd)/i) || "Pty Ltd";
+    if (nm) out.company.name = title(nm + " " + le);
+    out.company.regOffice = title(pick(t, /registered office\s+(.+?)\s+Does the company occupy/i));
+    out.company.ppb = title(pick(t, /principal place of business in Australia\s+(.+?)\s+Ultimate Holding/i));
+    out.company.state = pick(t, /nominate as the State or Territory in which the company will be taken to be registered\.?\s+([A-Z]{2,3})\b/i);
+    for (const m of t.matchAll(/name\s+(.+?)\s+address\s+(.+?)\s+birth details\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(.+?)\s+office\s+((?:(?:Director|Secretary|Public Officer)\s*)+)/gi))
+      for (const role of m[5].trim().split(/\s+(?=Director|Secretary|Public)/)) out.officers.push({ name: title(m[1]), address: title(m[2]), dob: pd(m[3]), pob: title(m[4]), role: title(role.trim()), appointed: out.date, ceased: null });
+    return out;
+  }
+
+  function parseCertReg(text) {
+    const t = flat(text);
+    const out = { kind: "cert_reg", label: "Certificate of registration", company: {} };
+    out.company.name = title(pick(t, /This is to certify that\s+(?:.{0,70}?\s)?([A-Z0-9][A-Z0-9&'.\- ]{1,60}?\s(?:PTY\.? LTD\.?|PTY\.? LIMITED|LIMITED|LTD))\b/));
+    out.company.acn = acnFmt(pick(t, /Australian Company Number\s+(\d{3} ?\d{3} ?\d{3})/i));
+    out.company.state = pick(t, /taken to be registered in\s+([A-Za-z ]+?)\./i);
+    out.date = out.company.registered = firstDate(t) || null;
+    return out;
+  }
+
+  // Trust deed schedules: "Item 4: Trustee/s  Name" (Acis) or labelled lines.
+  const TRUST_LABELS = [
+    ["deedDate", /^(?:Deed Date|Date of (?:this )?Deed|Establishment Date|Date of Establishment)$/i],
+    ["place", /^Place of Settlement$/i], ["settlor", /^Settlors?$/i], ["trustees", /^Trustees?(?:\/s)?$|^Initial Trustees?$/i],
+    ["sum", /^Settlement Sum$|^Settled Sum$/i], ["name", /^Name of (?:the )?Trust$|^Trust Name$/i], ["law", /^Applicable Law$|^Governing Law$|^Proper Law$/i],
+    ["appointors", /^Appointors?(?:\/s)?$|^Principals?$|^Guardians?$/i], ["altAppointors", /^Alternat(?:e|ive) Appointors?(?:\/s)?$|^Successor Appointors?$/i],
+    ["primary", /^Primary Beneficiar(?:y|ies)$|^Specified Beneficiar(?:y|ies)$|^Principal Beneficiar(?:y|ies)$|^Named Beneficiar(?:y|ies)$/i],
+    ["secondary", /^Secondary Beneficiar(?:y|ies)$|^General Beneficiar(?:y|ies)$/i], ["tertiary", /^Tertiary Beneficiar(?:y|ies)$/i],
+    ["default", /^Default Beneficiar(?:y|ies)$/i], ["excluded", /^Excluded Persons?$/i], ["vesting", /^Vesting (?:Day|Date)$/i],
+    ["unitholders", /^(?:Initial )?Unit ?holders?$/i], ["members", /^Members?$/i],
+  ];
+  function nameList(v) {
+    if (!v || /^nil$/i.test(v.trim())) return [];
+    return v.split(/\n|\s{2,}|;|\s+and\s+(?=[A-Z])/).map((x) => x.trim().replace(/[.,]$/, "")).filter((x) => x && x.length < 90 && !/^\(?[a-z]\)/.test(x));
+  }
+  function parseTrustDeed(text) {
+    const raw = (text || "").replace(/\u00a0/g, " ").replace(/\r/g, "");
+    const out = { kind: "trust_deed", label: "Trust deed", trust: {}, date: null };
+    const tr = out.trust;
+    const items = [...raw.matchAll(/Item\s+\d+\s*:\s+([A-Za-z\/ ]+?)(?:\s{2,}|\n|:)([\s\S]*?)(?=Item\s+\d+\s*:|Executed as a Deed|EXECUTED AS A DEED|$)/g)];
+    const assign = (label, value) => {
+      for (const [k, re] of TRUST_LABELS) if (re.test(label.trim())) {
+        const v = value.trim();
+        if (["trustees", "appointors", "altAppointors", "primary", "default", "unitholders", "members"].includes(k)) tr[k] = nameList(v).map(title);
+        else if (["secondary", "tertiary", "excluded"].includes(k)) tr[k] = flat(v);
+        else tr[k] = flat(v);
+        return true;
+      }
+      return false;
+    };
+    for (const m of items) assign(m[1], m[2]);
+    if (!items.length) {
+      const sched = raw.split(/\bSCHEDULE\b|\bSchedule\b(?=\s*\n)/).slice(-1)[0] || raw;
+      for (const line of sched.split(/\n/)) { const mm = line.match(/^\s*([A-Z][A-Za-z\/ ]{3,40}?)\s*[:\-]\s+(.+)$/); if (mm) assign(mm[1], mm[2]); }
+    }
+    const t = flat(raw);
+    if (!tr.name) tr.name = title(pick(t, /(?:Trust Deed|Deed of Settlement)\s+(.+?(?:Trust|Fund)(?: No\.? ?\d+)?)\b/i));
+    if (!tr.vesting) { const v = t.match(/Vesting (?:Day|Date) means[^.]*?(\d{1,3}) years/i); if (v) tr.vesting = v[1] + " years from the deed date (per the definition)"; }
+    tr.deedDate = pd(tr.deedDate || "") || null;
+    if (/unit trust/i.test(t.slice(0, 3000))) tr.type = "Unit trust";
+    else if (/superannuation fund/i.test(t.slice(0, 3000))) tr.type = "SMSF";
+    else if (/discretionary|family trust/i.test(t.slice(0, 5000))) tr.type = "Discretionary trust";
+    out.date = tr.deedDate || firstDate(t);
+    return out;
+  }
+  function parseTrusteeChange(text) {
+    const t = flat(text);
+    const out = { kind: "trustee_change", label: "Deed of change", date: pd(pick(t, /(?:Date of (?:this )?Deed|Dated|Effective Date|Date of Change)\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{4}|\d{1,2}(?:st|nd|rd|th)? \w+ \d{4})/i)) || firstDate(t), trust: {} };
+    const nn = (re) => nameList(pick(t, re).replace(/\s+(?:of|ACN)\s.*$/i, "")).map(title);
+    out.retiring = nn(/(?:Retiring|Outgoing|Former) Trustees?\s*:?\s+(.+?)\s+(?:New|Incoming|Continuing|Appointor|Background|Recitals|Operative)/i);
+    out.newTrustees = nn(/(?:New|Incoming|Replacement) Trustees?\s*:?\s+(.+?)\s+(?:Retiring|Continuing|Appointor|Background|Recitals|Operative|Trust)/i);
+    out.newAppointors = nn(/(?:New|Incoming|Replacement) Appointors?\s*:?\s+(.+?)\s+(?:Retiring|Background|Recitals|Operative|Trust)/i);
+    out.trust.name = title(pick(t, /(?:in respect of|for|known as)\s+(?:the\s+)?(.+?(?:Trust|Fund)(?: No\.? ?\d+)?)\b/i));
+    return out;
+  }
+  function parseFte(text) {
+    const t = flat(text);
+    const out = { kind: "fte", label: "Family trust election", date: firstDate(t), trust: {} };
+    const y = t.match(/(?:income year|from the income year ending 30 June|year ended 30 June)\s*(\d{4})/i) || t.match(/election[^.]{0,80}?(\d{4})/i);
+    out.fteYear = y ? y[1] : "";
+    out.specified = title(pick(t, /specified individual[^A-Z]{0,40}([A-Z][A-Za-z'\-]+(?: [A-Z][A-Za-z'\-]+){1,3})/i));
+    out.trust.name = title(pick(t, /Name of (?:the )?trust\s*:?\s+(.+?(?:Trust|Fund)(?: No\.? ?\d+)?)\b/i));
+    return out;
+  }
+  function parseAbn(text) {
+    const t = flat(text);
+    const out = { kind: "abn", label: "ABN record", date: firstDate(t), entity: {} };
+    out.entity.abn = abnFmt(pick(t, /(?:ABN Advice Letter|ABN|Australian Business Number)\s*:?\s+(\d{2} ?\d{3} ?\d{3} ?\d{3})/i));
+    out.entity.name = title(pick(t, /ABN Advice Letter\s+[\d ]{11,14}\s+(.+?)\s+Active/i) || pick(t, /Entity name:?\s+(.+?)\s+(?:ABN status|Entity type)/i));
+    const g = t.match(/Goods (?:&|and) Services Tax \(GST\):?\s+(Registered from|Not currently registered)\s*(\d{1,2} \w+ \d{4}|\d{1,2}\/\d{1,2}\/\d{4})?/i);
+    if (g) { out.entity.gst = /Registered/i.test(g[1]) ? "Registered" : "Not registered"; out.entity.gstFrom = pd(g[2] || ""); }
+    out.entity.entityType = pick(t, /Entity type:?\s+(.+?)\s+(?:Goods|ABN|Main business)/i);
+    return out;
+  }
+  function parseEngagement(text) {
+    const t = flat(text);
+    const emails = [...new Set((t.match(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/gi) || []).filter((e) => !/indepth|ignition|acis|redchip/i.test(e)))];
+    const phones = [...new Set((t.match(/(?:\+61\s?|0)[2-478](?:[ \-]?\d){8}/g) || []).map((p) => p.replace(/[^\d+]/g, "")).filter((p) => !/^0754\d{6}$/.test(p) || true))];
+    return { kind: "engagement", label: "Engagement letter", date: pd(pick(t, /Effective Start Date\s+(\w+ \d{1,2}, \d{4})/i)) || firstDate(t), contact: { emails, phones, recipient: title(pick(t, /Recipient\s+(.+?)\s+(?:Effective|Payment|Status)/i)) } };
+  }
+  function parseTaxReturn(text) {
+    const t = flat(text);
+    return { kind: "tax_return", label: "Tax return", date: null, entity: { abn: abnFmt(pick(t, /Australian Business Number\s+(\d{2} ?\d{3} ?\d{3} ?\d{3})/i)), tfn: pick(t, /Tax File Number\s+(\d{3} ?\d{3} ?\d{3})\b/i) }, year: pick(t, /Tax Return\s+(\d{4})(?![-\d])/i) };
+  }
+
+  function parse(text, name) {
+    const k = classify(text, name);
+    const r = k === "asic_extract" ? parseAsicExtract(text) : k === "cas_pack" ? parseCasPack(text) : k === "form201" ? parseForm201(text) : k === "cert_reg" ? parseCertReg(text)
+      : k === "trust_deed" ? parseTrustDeed(text) : k === "trustee_change" ? parseTrusteeChange(text) : k === "variation" ? { kind: "variation", label: "Deed of variation", date: firstDate(flat(text)) }
+      : k === "fte" ? parseFte(text) : k === "abn" ? parseAbn(text) : k === "engagement" ? parseEngagement(text) : k === "tax_return" ? parseTaxReturn(text) : { kind: k, label: k === "skip" ? "Earlier client profile (skipped)" : "Other document" };
+    r.file = name; return r;
+  }
+
+  /* ---------- merge ---------- */
+  function merge(results, clientFolder) {
+    const P = { client: clientFolder || "", entity: {}, company: {}, trust: {}, officers: [], members: [], shares: [], people: {}, contact: { emails: [], phones: [] }, alerts: [], sources: [] };
+    const src = (r) => ({ file: r.file, date: r.date || null, label: r.label });
+    const setF = (obj, field, value, r) => {
+      if (value === undefined || value === null || value === "") return;
+      const cur = obj[field]; const d = r.date || "0000";
+      if (!cur || (cur.date || "0000") <= d) obj[field] = { value, date: r.date || null, file: r.file, prev: cur && cur.value !== value ? cur : cur && cur.prev };
+      else if (cur.value !== value && !cur.prev) cur.prev = { value, date: r.date, file: r.file };
+    };
+    const byDate = results.slice().sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    let latestExtract = null, latestSnapshot = null;
+    const events = [];
+    const person = (name, info, r) => {
+      if (!name) return; const k = key(name); const p = P.people[k] || (P.people[k] = { name, roles: new Set() });
+      for (const f of ["address", "dob", "pob", "directorId"]) if (info[f]) setF(p, f, info[f], r);
+      if (info.role) p.roles.add(info.role);
+    };
+    for (const r of byDate) {
+      if (r.kind === "skip" || r.kind === "other") { P.sources.push({ ...src(r), used: false }); continue; }
+      P.sources.push({ ...src(r), used: true });
+      const c = r.company || {};
+      for (const [f, v] of Object.entries(c)) if (v) setF(P.company, f, v, r);
+      if (r.entity) for (const [f, v] of Object.entries(r.entity)) if (v) setF(P.entity, f, v, r);
+      if (r.trust) for (const [f, v] of Object.entries(r.trust)) if (v && (!Array.isArray(v) || v.length)) setF(P.trust, f, v, r);
+      if (r.contact) { P.contact.emails.push(...r.contact.emails); P.contact.phones.push(...r.contact.phones); }
+      if (r.kind === "asic_extract") latestExtract = r;
+      if ((r.kind === "asic_extract" || (r.kind === "cas_pack" && r.officers.length)) && (!latestSnapshot || (r.date || "") >= (latestSnapshot.date || ""))) latestSnapshot = r;
+      if (r.officers) r.officers.forEach((o) => person(o.name, o, r));
+      if (r.events) r.events.forEach((e) => { events.push({ ...e, file: r.file }); person(e.name, e, r); });
+      if (r.directorIds) for (const [k, id] of Object.entries(r.directorIds)) if (P.people[k]) setF(P.people[k], "directorId", id, r);
+      if (r.publicOfficer) setF(P.company, "publicOfficer", r.publicOfficer, r);
+      if (r.kind === "trustee_change") events.push({ type: "trustees", retiring: r.retiring, newTrustees: r.newTrustees, newAppointors: r.newAppointors, date: r.date, file: r.file });
+      if (r.kind === "variation") events.push({ type: "variation", date: r.date, file: r.file });
+      if (r.kind === "fte") { setF(P.trust, "fteYear", r.fteYear, r); setF(P.trust, "specified", r.specified, r); }
+      if ((r.kind === "asic_extract" || r.kind === "cas_pack") && r.members && r.members.length) {
+        if (!P._memDate || (r.date || "") >= P._memDate) { P._memDate = r.date || ""; P.members = r.members.map((m) => ({ ...m, file: r.file, date: r.date })); }
+      }
+      if (r.kind === "asic_extract" && r.shares.length) P.shares = r.shares.map((s) => ({ ...s, file: r.file, date: r.date }));
+    }
+    // officers: start from the newest snapshot, then apply events dated after it
+    const snap = latestSnapshot;
+    let officers = snap ? snap.officers.filter((o) => !o.ceased).map((o) => ({ ...o, source: snap.file, sourceDate: snap.date })) : [];
+    const history = snap ? snap.officers.filter((o) => o.ceased).map((o) => ({ ...o, source: snap.file })) : [];
+    for (const e of events.filter((e) => e.role && e.date && (!snap || e.date > (snap.date || ""))).sort((a, b) => a.date.localeCompare(b.date))) {
+      const i = officers.findIndex((o) => key(o.name) === key(e.name) && o.role === e.role);
+      if (e.type === "appoint" && i < 0) officers.push({ name: e.name, role: e.role, appointed: e.date, address: e.address || "", dob: e.dob || "", pob: e.pob || "", source: e.file, sourceDate: e.date, newer: true });
+      if (e.type === "cease" && i >= 0) { history.push({ ...officers[i], ceased: e.date, source: e.file }); officers.splice(i, 1); }
+    }
+    P.officers = officers.map((o) => { const p = P.people[key(o.name)]; return { ...o, address: (p && p.address && p.address.value) || o.address, dob: o.dob || (p && p.dob && p.dob.value) || "", pob: o.pob || (p && p.pob && p.pob.value) || "", directorId: (p && p.directorId && p.directorId.value) || "" }; });
+    P.officerHistory = history;
+    if (!P.company.publicOfficer && P.officers.some((o) => o.role === "Public Officer")) setF(P.company, "publicOfficer", P.officers.find((o) => o.role === "Public Officer").name, { date: null, file: "Officer list" });
+    // trustees and appointors: deed, then changes in date order
+    const ch = events.filter((e) => e.type === "trustees").sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    if (ch.length) {
+      const lastT = ch.filter((c) => c.newTrustees && c.newTrustees.length).pop(); if (lastT) setF(P.trust, "trustees", lastT.newTrustees, { date: lastT.date, file: lastT.file });
+      const lastA = ch.filter((c) => c.newAppointors && c.newAppointors.length).pop(); if (lastA) setF(P.trust, "appointors", lastA.newAppointors, { date: lastA.date, file: lastA.file });
+    }
+    P.trust.variations = events.filter((e) => e.type === "variation").map((e) => ({ date: e.date, file: e.file }));
+    // entity type
+    const nm = (P.company.name && P.company.name.value) || (P.trust.name && P.trust.name.value) || clientFolder || "";
+    P.entity.kind = { value: P.company.name || P.company.acn || /\bPty\b|Limited|Ltd/i.test(clientFolder || "") ? (/superannuation trustee/i.test((P.company.subclass && P.company.subclass.value) || "") ? "Company (super trustee)" : "Company") : P.trust.name || /trust|fund/i.test(clientFolder || "") ? (P.trust.type ? P.trust.type.value : /super|smsf/i.test(nm) ? "SMSF" : "Trust") : "Individual or other" };
+    P.entity.name = { value: nm };
+    // alerts
+    if (latestExtract) {
+      const ex = latestExtract.date || "";
+      const newer = events.filter((e) => e.date && e.date > ex && e.role);
+      if (newer.length) P.alerts.push(`Officer changes dated after the latest ASIC extract (${fmt(ex)}) were found in ${[...new Set(newer.map((e) => e.file))].join(", ")}. Order a fresh extract to confirm ASIC has them.`);
+      const months = (Date.now() - Date.parse(ex)) / 2.6e9; if (months > 12) P.alerts.push(`The latest ASIC extract is from ${fmt(ex)}, more than a year ago. Order a fresh one before relying on these details.`);
+      const lodged = latestExtract.docs.filter((d) => /^484/.test(d.form)).sort((a, b) => (b.effective || "").localeCompare(a.effective || ""))[0];
+      if (lodged) P.company.last484 = { value: `${fmt(lodged.effective)} (document ${lodged.no})`, date: latestExtract.date, file: latestExtract.file };
+    } else if (P.entity.kind.value.startsWith("Company")) P.alerts.push("No ASIC extract found in SuiteFiles. Officer and shareholder details come from CAS 360 or incorporation documents only, so order a current extract to confirm them.");
+    if (P.company.review && P.company.review.value && P.company.review.value >= new Date().toISOString().slice(0, 10)) P.company.nextReview = { ...P.company.review };
+    else if (P.company.review && P.company.review.value) {
+      const r = P.company.review.value; const d = new Date(r); while (d.toISOString().slice(0, 10) < new Date().toISOString().slice(0, 10)) d.setUTCFullYear(d.getUTCFullYear() + 1);
+      P.company.nextReview = { value: d.toISOString().slice(0, 10), date: P.company.review.date, file: P.company.review.file };
+    }
+    if (P.entity.kind.value !== "Company" && !P.trust.trustees && /Trust|SMSF/.test(P.entity.kind.value)) P.alerts.push("No trustee found. The trust deed may be a scan the tool couldn't read, or it may not be in the Permanent folder.");
+    P.contact.emails = [...new Set(P.contact.emails)]; P.contact.phones = [...new Set(P.contact.phones)];
+    delete P._memDate;
+    return P;
+  }
+  function fmt(iso) { if (!iso) return ""; const [y, m, d] = iso.split("-"); return `${+d} ${["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][+m - 1]} ${y}`; }
+
+  /* ---------- exports: rows for each system ---------- */
+  const v = (f) => (f && typeof f === "object" && "value" in f ? f.value : f) || "";
+  const fmtAu = (iso) => (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.split("-").reverse().join("/") : iso || "");
+  function splitName(n) { const p = (n || "").trim().split(/\s+/); return { first: p[0] || "", middle: p.slice(1, -1).join(" "), last: p.length > 1 ? p[p.length - 1] : "" }; }
+  function exportsFor(P, opts) {
+    opts = opts || {}; const sens = !!opts.sensitive;
+    const name = v(P.entity.name) || P.client; const isCo = /^Company/.test(v(P.entity.kind));
+    const rels = [];
+    P.officers.forEach((o) => rels.push({ person: o.name, relationship: o.role, entity: name, shares: "", percent: "", from: o.appointed }));
+    const totalShares = P.members.reduce((a, m) => a + (m.number || 0), 0);
+    P.members.forEach((m) => m.holders.forEach((h) => rels.push({ person: h.name, relationship: "Shareholder", entity: name, shares: m.number || "", percent: totalShares ? Math.round((m.number / totalShares) * 10000) / 100 : "", from: m.entered || "", note: m.onBehalfOf ? "Held for " + m.onBehalfOf : !m.beneficial ? "Not beneficially held" : "" })));
+    if (v(P.company.publicOfficer) && !rels.some((r) => r.relationship === "Public Officer")) rels.push({ person: v(P.company.publicOfficer), relationship: "Public Officer", entity: name });
+    (v(P.trust.trustees) || []).forEach((t) => rels.push({ person: t, relationship: "Trustee", entity: name }));
+    (v(P.trust.appointors) || []).forEach((t) => rels.push({ person: t, relationship: "Appointor", entity: name }));
+    if (v(P.trust.settlor)) rels.push({ person: v(P.trust.settlor), relationship: "Settlor", entity: name });
+    (v(P.trust.primary) || []).forEach((t) => rels.push({ person: t, relationship: "Beneficiary", entity: name }));
+    (v(P.trust.unitholders) || []).forEach((t) => rels.push({ person: t, relationship: "Shareholder", entity: name, note: "Unitholder" }));
+    (v(P.trust.members) || []).forEach((t) => rels.push({ person: t, relationship: "Member", entity: name }));
+    const people = {};
+    rels.forEach((r) => { const k = key(r.person); if (!people[k]) { const p = P.people[k] || {}; people[k] = { name: r.person, roles: new Set(), address: v(p.address), dob: v(p.dob), pob: v(p.pob), directorId: v(p.directorId) }; } people[k].roles.add(r.relationship); });
+    const fy = "30 June";
+    const karbonOrg = [{ "Organization Name": name, "Legal Name": name, "Entity Type": v(P.entity.kind), "Description": "", "Client Identifier": "", "Fiscal Year End Day": 30, "Fiscal Year End Month": 6,
+      "Incorporated / Registration Date": fmtAu(v(P.company.registered) || v(P.trust.deedDate)), "Business Numbers (ABN)": v(P.entity.abn) || v(P.company.abn), "Company Number (ACN)": v(P.company.acn),
+      "Tax File Number": sens ? v(P.entity.tfn) : "", "Sales Tax Basis": "", "Sales Tax Period": "", "Physical Address": v(P.company.ppb) || v(P.company.regOffice), "Mailing Address": v(P.company.postal),
+      "Legal Address (Registered Office)": v(P.company.regOffice), "Email": P.contact.emails[0] || "", "Phone": P.contact.phones[0] || "", "Client Group Name": "" }];
+    const karbonPeople = Object.values(people).map((p) => { const s = splitName(p.name); return { "First Name": s.first, "Middle Name": s.middle, "Last Name": s.last, "Preferred Name": s.first, "Date of Birth": sens ? fmtAu(p.dob) : "", "Email": "", "Phone": "", "Address": p.address, "Belongs To": name, "Role": [...p.roles].join(", ") }; });
+    const xpmClient = [{ "Name": name, "Business Structure": isCo ? "Company" : /SMSF/.test(v(P.entity.kind)) ? "Superannuation Fund" : /Trust/.test(v(P.entity.kind)) ? "Trust" : "", "Business Number (ABN)": v(P.entity.abn) || v(P.company.abn), "Company Number (ACN)": v(P.company.acn), "Tax Number": sens ? v(P.entity.tfn) : "",
+      "Balance Month": "June", "GST Registered": v(P.entity.gst) === "Registered" ? "Yes" : v(P.entity.gst) ? "No" : "", "GST Period": "", "GST Basis": "", "Postal Address": v(P.company.postal) || v(P.company.regOffice), "Physical Address": v(P.company.ppb) || v(P.company.regOffice), "Email": P.contact.emails[0] || "", "Phone": P.contact.phones[0] || "" }];
+    const xpmRel = rels.map((r) => ({ "Client": r.entity, "Relationship": r.relationship, "Related Client": r.person, "Shares": r.shares || "", "Percentage": r.percent || "", "Start Date": fmtAu(r.from || ""), "Note": r.note || "" }));
+    const casCompany = isCo ? [{ "Company Name": name, "ACN": v(P.company.acn), "ABN": v(P.entity.abn) || v(P.company.abn), "Incorporation Date": fmtAu(v(P.company.registered)), "Annual Review Date": fmtAu(v(P.company.nextReview) || v(P.company.review)), "State of Registration": v(P.company.state),
+      "Company Type": v(P.company.type), "Company Class": v(P.company.cls), "Company Sub Class": v(P.company.subclass), "Registered Office": v(P.company.regOffice), "Principal Place of Business": v(P.company.ppb), "Postal Address": v(P.company.postal), "Ultimate Holding Company": v(P.company.holding) }] : [];
+    const casOfficers = P.officers.map((o) => ({ "Name": o.name, "Position": o.role, "Appointed": fmtAu(o.appointed), "Residential Address": o.address, "Date of Birth": sens ? fmtAu(o.dob) : "", "Place of Birth": sens ? o.pob : "", "Director ID": sens ? o.directorId : o.directorId ? "On file" : "" }));
+    const casMembers = P.members.flatMap((m) => m.holders.map((h) => ({ "Member": h.name, "Address": h.address, "Share Class": m.className || m.cls, "Number of Shares": m.number, "Fully Paid": m.fullyPaid === false ? "No" : "Yes", "Beneficially Held": m.beneficial ? "Yes" : "No", "Held on Behalf of": m.onBehalfOf || "", "Date of Entry": fmtAu(m.entered || "") })));
+    const casTrust = /Trust|SMSF/.test(v(P.entity.kind)) ? [{ "Trust Name": name, "Trust Type": v(P.trust.type), "Establishment Date": fmtAu(v(P.trust.deedDate)), "Settlor": v(P.trust.settlor), "Trustee(s)": (v(P.trust.trustees) || []).join("; "), "Appointor(s)": (v(P.trust.appointors) || []).join("; "), "Alternate Appointor(s)": (v(P.trust.altAppointors) || []).join("; "), "Applicable Law": v(P.trust.law), "Vesting Date": v(P.trust.vesting), "ABN": v(P.entity.abn), "FTE Year": v(P.trust.fteYear), "Specified Individual": v(P.trust.specified) }] : [];
+    return { karbonOrg, karbonPeople, xpmClient, xpmRel, casCompany, casOfficers, casMembers, casTrust, rels };
+  }
+
+  const api = { classify, parse, merge, exportsFor, fmt, fmtAu, pd, title };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.ClientProfile = api;
+})(this);
+</script>
+<script>
+"use strict";
+const CONFIG = { clientId: "191dcf6b-f13e-491c-9556-280d809b602a", tenantId: "e0690e4c-36c8-47bf-b896-bc1ecf320a7c", driveId: "b!c82T-jhzL0eu4-AHjF9EKCLCKVMsd55FtWuNLmIYMZohHmghm0pKSbXCQuWfihYQ", clientsRoot: "Clients", scopes: ["User.Read", "Files.ReadWrite.All"] };
+const C = window.ClientProfile, $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+let msalApp = null, account = null, folders = [], results = [], P = null, localFiles = [];
+const note = (h, k) => { $("#msg").innerHTML = h ? `<div class="notice ${k || ""}">${h}</div>` : ""; };
+const enc = (p) => p.split("/").map(encodeURIComponent).join("/");
+
+/* ---------- sign-in (same setup as Document Filing) ---------- */
+function signInError(e) {
+  const t = ((e && (e.errorCode || "")) + " " + (e && (e.errorMessage || e.message || ""))).toString(), here = esc(location.origin + location.pathname);
+  if (/AADSTS50011|redirect_uri/i.test(t)) return `Microsoft won't sign in on this page yet because its address isn't approved. In Entra, open <strong>Activity Statement Collation</strong>, go to Authentication, and under <strong>Single-page application</strong> add <strong>${here}</strong> and <strong>${here.replace(/\/$/, "")}/index.html</strong>.`;
+  if (/AADSTS9002326/i.test(t)) return `This page's address was added in Entra as a Web address. Move <strong>${here}</strong> to Single-page application.`;
+  if (/AADSTS65001|consent/i.test(t)) return "Microsoft needs admin consent. In Entra, open the app registration, go to API permissions and click Grant admin consent.";
+  return "Sign-in didn't finish. Try again, and allow pop-ups for this page. Microsoft said: " + esc(t.trim() || "no reason given") + ".";
+}
+async function initAuth() {
+  if (window.opener && window.opener !== window && /^msal\./.test(window.name || "")) { document.body.innerHTML = "<p style='font-family:Montserrat,Arial;padding:40px;color:#56776C'>Signing you in…</p>"; return; }
+  if (!window.msal) { note("Microsoft sign-in couldn't load. You can still drop documents from your computer.", "warn"); return; }
+  msalApp = new msal.PublicClientApplication({ auth: { clientId: CONFIG.clientId, authority: "https://login.microsoftonline.com/" + CONFIG.tenantId, redirectUri: location.origin + location.pathname }, cache: { cacheLocation: "localStorage" } });
+  try { const r = await msalApp.handleRedirectPromise(); if (r && r.account) account = r.account; } catch (e) { note(signInError(e), "warn"); }
+  account = account || msalApp.getAllAccounts()[0] || null; renderWho(); if (account) loadClients();
+}
+function renderWho() { $("#who").textContent = account ? account.name || account.username : ""; $("#signin").textContent = account ? "Sign out" : "Sign in with Microsoft"; updateRead(); }
+$("#signin").onclick = async () => {
+  if (!msalApp) return;
+  try {
+    if (account) { await msalApp.logoutPopup({ account }); account = null; folders = []; renderWho(); return; }
+    const r = await msalApp.loginPopup({ scopes: CONFIG.scopes, prompt: "select_account" }); account = r.account; renderWho(); loadClients();
+  } catch (e) { if (e && /popup_window_error|empty_window_error/i.test(e.errorCode || "")) return msalApp.loginRedirect({ scopes: CONFIG.scopes }); if (!/user_cancelled/i.test((e && e.errorCode) || "")) note(signInError(e), "warn"); }
+};
+async function token() { try { return (await msalApp.acquireTokenSilent({ scopes: CONFIG.scopes, account })).accessToken; } catch (e) { return (await msalApp.acquireTokenPopup({ scopes: CONFIG.scopes, account })).accessToken; } }
+async function graph(method, url, body, headers = {}) {
+  const t = await token();
+  return fetch(url.startsWith("http") ? url : "https://graph.microsoft.com/v1.0" + url, { method, body, headers: Object.assign({ Authorization: "Bearer " + t }, typeof body === "string" ? { "Content-Type": "application/json" } : {}, headers) });
+}
+async function listChildren(path) {
+  const out = []; let url = `/drives/${CONFIG.driveId}/root:/${enc(path)}:/children?$top=999`;
+  while (url) { const r = await graph("GET", url); if (!r.ok) break; const j = await r.json(); out.push(...j.value); url = j["@odata.nextLink"] || null; }
+  return out;
+}
+async function loadClients() {
+  note('<span class="spin"></span>Loading the client list from SuiteFiles…');
+  try { folders = (await listChildren(CONFIG.clientsRoot)).filter((v) => v.folder && !/^zzz/i.test(v.name)).map((v) => v.name).sort((a, b) => a.localeCompare(b));
+    $("#clientList").innerHTML = folders.map((f) => `<option value="${esc(f)}">`).join(""); note(`Signed in. ${folders.length} client folders loaded.`); }
+  catch (e) { note("Couldn't load the client folders. Check you're signed in with your Indepth account.", "warn"); }
+  updateRead();
+}
+function updateRead() { const c = $("#client").value.trim(); $("#read").disabled = !((account && folders.includes(c)) || localFiles.length); }
+$("#client").addEventListener("input", updateRead);
+
+/* ---------- reading documents ---------- */
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+let ocrWorker = null;
+async function ocr(img) {
+  if (!ocrWorker) ocrWorker = await Tesseract.createWorker("eng", 1, { workerPath: "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js", corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1", langPath: "https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int" });
+  return (await ocrWorker.recognize(img)).data.text || "";
+}
+async function pageText(p) { const tc = await p.getTextContent(); return tc.items.map((it) => it.str + (it.hasEOL ? "\n" : "  ")).join(""); }
+async function renderOcr(p) { const vp = p.getViewport({ scale: 2 }), cv = document.createElement("canvas"); cv.width = vp.width; cv.height = vp.height; await p.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise; return ocr(cv); }
+async function readBlob(name, blob, status) {
+  const ext = (name.split(".").pop() || "").toLowerCase();
+  if (ext === "pdf") {
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise, n = pdf.numPages, parts = [];
+    for (let i = 1; i <= Math.min(n, 60); i++) parts.push(await pageText(await pdf.getPage(i)));
+    const chars = parts.slice(0, 3).join("").replace(/\s/g, "").length;
+    if (chars < 25 * Math.min(n, 3)) { // scanned: read the first two and last four pages (trust deed schedules sit at the back)
+      const want = [...new Set([1, 2, n - 3, n - 2, n - 1, n].filter((i) => i >= 1 && i <= n))], out = [];
+      for (const i of want) { status(`reading scanned page ${i} of ${n}`); out.push(await renderOcr(await pdf.getPage(i))); }
+      return { text: out.join("\n"), scanned: true };
+    }
+    return { text: parts.join("\n"), scanned: false };
+  }
+  if (ext === "docx" && window.mammoth) return { text: (await mammoth.extractRawText({ arrayBuffer: await blob.arrayBuffer() })).value, scanned: false };
+  if (["png", "jpg", "jpeg"].includes(ext)) { status("reading the photo"); return { text: await ocr(blob), scanned: true }; }
+  return { text: "", scanned: false };
+}
+const WANT = /^(corporate compliance|permanent|aml|cas-?360|engagement)$/i;
+async function collect(client) {
+  const base = CONFIG.clientsRoot + "/" + client, top = await listChildren(base), files = [];
+  const walk = async (path, depth) => { for (const it of await listChildren(path)) { if (it.folder && depth < 3) await walk(path + "/" + it.name, depth + 1); else if (it.file) files.push({ ...it, path }); } };
+  for (const it of top) if (it.folder && WANT.test(it.name)) await walk(base + "/" + it.name, 1);
+  const years = top.filter((it) => it.folder && /^\d{4}$/.test(it.name)).map((it) => it.name).sort().slice(-2);
+  for (const y of years) for (const it of await listChildren(base + "/" + y)) if (it.folder && /tax returns/i.test(it.name)) for (const f of await listChildren(base + "/" + y + "/" + it.name)) if (f.file && /tax return/i.test(f.name)) files.push({ ...f, path: base + "/" + y + "/" + it.name });
+  return files.filter((f) => /\.(pdf|docx|png|jpe?g)$/i.test(f.name) && !/client profile/i.test(f.name) && (f.size || 0) < 40e6).slice(0, 120);
+}
+$("#read").onclick = async () => {
+  const client = $("#client").value.trim(); $("#read").disabled = true; results = []; $("#files").innerHTML = ""; $("#progress").classList.remove("hidden");
+  const prog = (h) => ($("#progress").innerHTML = h);
+  try {
+    const jobs = [];
+    if (account && folders.includes(client)) { prog('<span class="spin"></span>Finding documents in SuiteFiles…'); (await collect(client)).forEach((f) => jobs.push({ name: f.name, where: f.path.split("/").slice(2).join(" › "), get: async () => { const r = await fetch(f["@microsoft.graph.downloadUrl"]); return r.blob(); } })); }
+    localFiles.forEach((f) => jobs.push({ name: f.name, where: "From this computer", get: async () => f }));
+    if (!jobs.length) { prog("No documents found in that client's folders."); return; }
+    let i = 0;
+    for (const j of jobs) {
+      i++; const li = document.createElement("li"); li.innerHTML = `<span class="spin"></span><b title="${esc(j.where + " › " + j.name)}">${esc(j.name)}</b>`; $("#files").appendChild(li);
+      prog(`<span class="spin"></span>Reading ${i} of ${jobs.length}: ${esc(j.name)}`);
+      try {
+        const { text, scanned } = await readBlob(j.name, await j.get(), (s) => prog(`<span class="spin"></span>Reading ${i} of ${jobs.length}: ${esc(j.name)}, ${s}`));
+        const r = C.parse(text, j.name); r.where = j.where; r.scanned = scanned; results.push(r);
+        li.innerHTML = `<b title="${esc(j.where + " › " + j.name)}">${esc(j.name)}</b><span class="k ${/other|skip/.test(r.kind) ? "no" : ""}">${esc(r.label)}${r.date ? ", " + C.fmt(r.date) : ""}${scanned ? ", scan" : ""}</span>`;
+      } catch (e) { console.error(e); li.innerHTML = `<b>${esc(j.name)}</b><span class="k no">couldn't open</span>`; }
+    }
+    const used = results.filter((r) => !/other|skip/.test(r.kind)).length;
+    prog(`Read ${jobs.length} documents. ${used} had client details.`);
+    P = C.merge(results, client || (localFiles[0] && localFiles[0].name) || "");
+    renderProfile();
+  } catch (e) { console.error(e); prog("Something went wrong reading the documents. Check your connection and try again."); }
+  finally { updateRead(); }
+};
+const drop = $("#drop");
+drop.onclick = () => $("#file").click(); drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("#file").click(); } };
+$("#file").onchange = (e) => { addLocal([...e.target.files]); e.target.value = ""; };
+["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", (e) => addLocal([...e.dataTransfer.files]));
+function addLocal(list) { localFiles.push(...list); drop.textContent = `${localFiles.length} document${localFiles.length === 1 ? "" : "s"} from this computer added. Click Read documents.`; updateRead(); }
+
+/* ---------- profile on screen ---------- */
+const SENS = new Set(["tfn", "dob", "pob", "directorId"]);
+const val = (f) => (f && typeof f === "object" && "value" in f ? f.value : f) ?? "";
+function field(obj, k, label, opts = {}) {
+  const f = obj[k], v = Array.isArray(val(f)) ? val(f).join("; ") : val(f), sens = SENS.has(k) && !$("#showSens").checked && v;
+  const shown = opts.date ? C.fmtAu(v) : v;
+  const src = f && f.file ? `${f.file}${f.date ? ", " + C.fmt(f.date) : ""}` : "";
+  const prev = f && f.prev && val(f.prev) !== v ? `Earlier: ${esc(Array.isArray(val(f.prev)) ? val(f.prev).join("; ") : opts.date ? C.fmtAu(val(f.prev)) : val(f.prev))} (${esc(f.prev.file || "")})` : "";
+  return `<div class="fld${v ? "" : " missing"}"><span class="lab"><span>${esc(label)}</span>${v && !sens ? `<button class="copy" type="button" data-copy="${esc(shown)}">Copy</button>` : ""}</span>
+    <input type="text" data-obj="${opts.obj}" data-k="${k}" data-date="${opts.date ? 1 : ""}" data-list="${Array.isArray(val(f)) ? 1 : ""}" value="${sens ? "••••••••" : esc(shown)}" placeholder="Not found" ${sens ? "readonly" : ""}>
+    ${src ? `<span class="src" title="${esc(src)}">From ${esc(src)}</span>` : ""}${prev ? `<span class="prev">${prev}</span>` : ""}</div>`;
+}
+function table(rows, cols, path) {
+  if (!rows.length) return `<p style="font-size:13px;color:var(--ix-muted);margin:0">None found.</p>`;
+  return `<div class="tablewrap"><table><thead><tr>${cols.map((c) => `<th>${esc(c[1])}</th>`).join("")}<th></th></tr></thead><tbody>${rows.map((r, i) => `<tr>${cols.map(([k, , d]) => {
+    const v = r[k] ?? "", sens = SENS.has(k) && !$("#showSens").checked && v;
+    return `<td><input data-path="${path}" data-i="${i}" data-k="${k}" data-date="${d ? 1 : ""}" value="${sens ? "••••••" : esc(d ? C.fmtAu(v) : v)}" ${sens ? "readonly" : ""} placeholder="-"></td>`; }).join("")}<td>${r.newer ? '<span class="tag">Newer than ASIC extract</span>' : ""}</td></tr>`).join("")}</tbody></table></div>`;
+}
+function renderProfile() {
+  const k = val(P.entity.kind), isCo = /^Company/.test(k), isTrust = /Trust|SMSF/.test(k);
+  $("#profileCard").classList.remove("hidden"); $("#exportCard").classList.remove("hidden");
+  $("#pTitle").textContent = `${val(P.entity.name) || "Client"} (${k})`;
+  $("#alerts").innerHTML = P.alerts.map((a) => `<div class="alert">${esc(a)}</div>`).join("");
+  let h = `<h3>Entity</h3><div class="grid">${field(P.entity, "name", "Legal name", { obj: "entity" })}${field(P.entity, "kind", "Entity type", { obj: "entity" })}${field(P.entity, "abn", "ABN", { obj: "entity" })}${isCo ? field(P.company, "acn", "ACN", { obj: "company" }) : ""}${field(P.entity, "tfn", "TFN", { obj: "entity" })}${field(P.entity, "gst", "GST", { obj: "entity" })}${field(P.entity, "gstFrom", "GST registered from", { obj: "entity", date: 1 })}</div>`;
+  if (isCo || P.company.name) {
+    h += `<h3>Company</h3><div class="grid">${field(P.company, "registered", "Registration date", { obj: "company", date: 1 })}${field(P.company, "nextReview", "Next annual review", { obj: "company", date: 1 })}${field(P.company, "state", "State of registration", { obj: "company" })}${field(P.company, "type", "Company type", { obj: "company" })}${field(P.company, "cls", "Class", { obj: "company" })}${field(P.company, "subclass", "Sub class", { obj: "company" })}${field(P.company, "regOffice", "Registered office", { obj: "company" })}${field(P.company, "ppb", "Principal place of business", { obj: "company" })}${field(P.company, "postal", "Postal / ASIC contact address", { obj: "company" })}${field(P.company, "holding", "Ultimate holding company", { obj: "company" })}${field(P.company, "publicOfficer", "Public officer", { obj: "company" })}${field(P.company, "last484", "Last Form 484 lodged (per ASIC)", { obj: "company" })}</div>`;
+    h += `<h3>Officeholders (current)</h3>` + table(P.officers, [["role", "Position"], ["name", "Name"], ["appointed", "Appointed", 1], ["address", "Residential address"], ["dob", "Date of birth", 1], ["pob", "Place of birth"], ["directorId", "Director ID"]], "officers");
+    if (P.officerHistory && P.officerHistory.length) h += `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--ix-deep)">Former officeholders (${P.officerHistory.length})</summary>${table(P.officerHistory, [["role", "Position"], ["name", "Name"], ["appointed", "Appointed", 1], ["ceased", "Ceased", 1]], "officerHistory")}</details>`;
+    h += `<h3>Shareholders</h3>` + table(P.members.map((m) => ({ ...m, holder: m.holders.map((x) => x.name).join(" & "), address: m.holders.map((x) => x.address).join(" / "), ben: m.beneficial ? "Yes" : "No" })), [["holder", "Member"], ["cls", "Class"], ["number", "Shares"], ["ben", "Beneficially held"], ["onBehalfOf", "Held for"], ["address", "Address"]], "membersView");
+  }
+  if (isTrust || P.trust.name) {
+    h += `<h3>Trust</h3><div class="grid">${field(P.trust, "name", "Trust name", { obj: "trust" })}${field(P.trust, "type", "Trust type", { obj: "trust" })}${field(P.trust, "deedDate", "Deed date", { obj: "trust", date: 1 })}${field(P.trust, "settlor", "Settlor", { obj: "trust" })}${field(P.trust, "trustees", "Trustee(s), current", { obj: "trust" })}${field(P.trust, "appointors", "Appointor(s), current", { obj: "trust" })}${field(P.trust, "altAppointors", "Alternate appointor(s)", { obj: "trust" })}${field(P.trust, "primary", "Primary / named beneficiaries", { obj: "trust" })}${field(P.trust, "unitholders", "Unitholders", { obj: "trust" })}${field(P.trust, "members", "Fund members", { obj: "trust" })}${field(P.trust, "law", "Applicable law", { obj: "trust" })}${field(P.trust, "vesting", "Vesting date", { obj: "trust" })}${field(P.trust, "fteYear", "Family trust election year", { obj: "trust" })}${field(P.trust, "specified", "FTE specified individual", { obj: "trust" })}</div>`;
+    if (val(P.trust.secondary)) h += `<h3>Other beneficiaries (deed wording)</h3><div class="longtext">${esc(val(P.trust.secondary))}${val(P.trust.tertiary) ? "<br><br>" + esc(val(P.trust.tertiary)) : ""}</div>`;
+    if (P.trust.variations && P.trust.variations.length) h += `<p style="font-size:12.5px;color:var(--ix-muted)">Deeds of variation: ${P.trust.variations.map((x) => esc(C.fmt(x.date) || x.file)).join(", ")}</p>`;
+  }
+  h += `<h3>Contact</h3><div class="grid">${field({ e: { value: P.contact.emails.join("; ") } }, "e", "Email (from the engagement letter)", { obj: "emails" })}${field({ p: { value: P.contact.phones.join("; ") } }, "p", "Phone", { obj: "phones" })}</div>`;
+  const unused = results.filter((r) => /other/.test(r.kind)).length;
+  h += `<p style="font-size:12px;color:var(--ix-muted);margin-top:18px">${results.length} documents read${unused ? `, ${unused} had no client details (correspondence, workpapers and the like)` : ""}. Anything showing "Not found" wasn't in the documents, so check Karbon, the client or a fresh ASIC search.</p>`;
+  $("#profile").innerHTML = h;
+}
+$("#showSens").onchange = renderProfile;
+$("#profile").addEventListener("change", (e) => {
+  const el = e.target; if (el.readOnly) return; const raw = el.value.trim(), v = el.dataset.date ? (C.pd(raw) || raw) : raw;
+  if (el.dataset.obj) { const o = el.dataset.obj; if (o === "emails") P.contact.emails = raw.split(/;\s*/).filter(Boolean); else if (o === "phones") P.contact.phones = raw.split(/;\s*/).filter(Boolean); else { const tgt = P[o]; tgt[el.dataset.k] = { value: el.dataset.list ? raw.split(/;\s*/).filter(Boolean) : v, file: "Edited by you", date: null }; } }
+  if (el.dataset.path) {
+    const i = +el.dataset.i, k = el.dataset.k;
+    if (el.dataset.path === "membersView") { const m = P.members[i]; if (k === "holder") m.holders = raw.split(/\s*&\s*/).map((n, j) => ({ name: n, address: (m.holders[j] || {}).address || "" })); else if (k === "ben") m.beneficial = /^y/i.test(raw); else if (k === "number") m.number = +raw || raw; else m[k] = v; }
+    else P[el.dataset.path][i][k] = v;
+  }
+});
+$("#profile").addEventListener("click", (e) => { const b = e.target.closest("[data-copy]"); if (b) { navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copied"; setTimeout(() => (b.textContent = "Copy"), 1200); } });
+
+/* ---------- exports ---------- */
+const today = () => new Date().toISOString().slice(0, 10).replace(/-/g, "");
+const safe = (s) => String(s || "").replace(/["*:<>?\/\\|]/g, "").trim();
+function profileRows(sens) {
+  const rows = [], add = (sec, label, f, date) => { let v = val(f); if (Array.isArray(v)) v = v.join("; "); if (date) v = C.fmtAu(v); rows.push({ Section: sec, Detail: label, Value: v || "", Source: (f && f.file) || "", "Source date": f && f.date ? C.fmtAu(f.date) : "" }); };
+  add("Entity", "Legal name", P.entity.name); add("Entity", "Entity type", P.entity.kind); add("Entity", "ABN", P.entity.abn); if (sens) add("Entity", "TFN", P.entity.tfn); add("Entity", "GST", P.entity.gst);
+  [["acn", "ACN"], ["registered", "Registration date", 1], ["nextReview", "Next annual review", 1], ["state", "State"], ["type", "Type"], ["cls", "Class"], ["subclass", "Sub class"], ["regOffice", "Registered office"], ["ppb", "Principal place of business"], ["postal", "Postal address"], ["holding", "Ultimate holding company"], ["publicOfficer", "Public officer"], ["last484", "Last Form 484 lodged"]].forEach(([k, l, d]) => P.company[k] && add("Company", l, P.company[k], d));
+  [["name", "Trust name"], ["type", "Trust type"], ["deedDate", "Deed date", 1], ["settlor", "Settlor"], ["trustees", "Trustees"], ["appointors", "Appointors"], ["altAppointors", "Alternate appointors"], ["primary", "Primary beneficiaries"], ["secondary", "Other beneficiaries (deed wording)"], ["unitholders", "Unitholders"], ["members", "Fund members"], ["law", "Applicable law"], ["vesting", "Vesting date"], ["fteYear", "FTE year"], ["specified", "FTE specified individual"]].forEach(([k, l, d]) => P.trust[k] && add("Trust", l, P.trust[k], d));
+  P.officers.forEach((o) => rows.push({ Section: "Officeholder", Detail: o.role, Value: o.name + " (appointed " + C.fmtAu(o.appointed) + ")", Source: o.source || "", "Source date": C.fmtAu(o.sourceDate || "") }));
+  return rows;
+}
+$("#xlsx").onclick = () => {
+  const sens = $("#inclSens").checked, X = C.exportsFor(P, { sensitive: sens }), wb = XLSX.utils.book_new();
+  const sheet = (name, rows) => { const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Note: "Nothing found for this entity type" }]); ws["!cols"] = Object.keys(rows[0] || { Note: 1 }).map((k) => ({ wch: Math.min(48, Math.max(12, k.length + 2, ...rows.map((r) => String(r[k] ?? "").length + 1))) })); XLSX.utils.book_append_sheet(wb, ws, name); };
+  sheet("Profile", profileRows(sens)); sheet("Karbon Organisations", X.karbonOrg); sheet("Karbon People", X.karbonPeople); sheet("XPM Client", X.xpmClient); sheet("XPM Relationships", X.xpmRel);
+  sheet("CAS 360 Company", X.casCompany); sheet("CAS 360 Officers", X.casOfficers); sheet("CAS 360 Members", X.casMembers); sheet("CAS 360 Trust", X.casTrust);
+  sheet("Sources", results.map((r) => ({ Document: r.file, Folder: r.where || "", "Read as": r.label, "Document date": C.fmtAu(r.date || ""), Scan: r.scanned ? "Yes" : "" })));
+  XLSX.writeFile(wb, `${today()} Client Profile - ${safe(val(P.entity.name) || P.client)}.xlsx`);
+  $("#exportMsg").textContent = "Spreadsheet downloaded.";
+};
+function buildPdf() {
+  const sens = $("#inclSens").checked, { jsPDF } = window.jspdf, doc = new jsPDF({ unit: "mm", format: "a4" });
+  let y = 18; const W = 210, M = 16;
+  const line = (txt, size = 10, bold = false, color = [65, 64, 66]) => { doc.setFont("helvetica", bold ? "bold" : "normal"); doc.setFontSize(size); doc.setTextColor(...color); for (const l of doc.splitTextToSize(String(txt), W - 2 * M)) { if (y > 280) { doc.addPage(); y = 18; } doc.text(l, M, y); y += size * 0.45 + 1.2; } };
+  doc.setFillColor(86, 119, 108); doc.rect(0, 0, W, 10, "F");
+  line(`Client Profile: ${val(P.entity.name) || P.client}`, 16, true, [86, 119, 108]); line(`${val(P.entity.kind)}. Prepared ${C.fmt(new Date().toISOString().slice(0, 10))} from documents in SuiteFiles. Check before relying on it.`, 9, false, [95, 102, 100]); y += 3;
+  if (P.alerts.length) { line("Check these", 11, true, [154, 91, 46]); P.alerts.forEach((a) => line("• " + a, 9, false, [154, 91, 46])); y += 2; }
+  let sec = ""; for (const r of profileRows(sens)) { if (r.Section !== sec) { sec = r.Section; y += 2; line(sec, 12, true, [86, 119, 108]); } line(`${r.Detail}: ${r.Value || "Not found"}${r.Source ? "   (" + r.Source + (r["Source date"] ? ", " + r["Source date"] : "") + ")" : ""}`, 9); }
+  if (P.members.length) { y += 2; line("Shareholders", 12, true, [86, 119, 108]); P.members.forEach((m) => line(`${m.holders.map((h) => h.name).join(" & ")}: ${m.number} ${m.className || m.cls} shares, ${m.beneficial ? "beneficially held" : "not beneficially held"}${m.onBehalfOf ? " (for " + m.onBehalfOf + ")" : ""}`, 9)); }
+  if (sens && P.officers.length) { y += 2; line("Officeholder personal details", 12, true, [86, 119, 108]); P.officers.forEach((o) => line(`${o.name} (${o.role}): born ${C.fmtAu(o.dob) || "not found"} ${o.pob || ""}; ${o.address || "address not found"}; Director ID ${o.directorId || "not found"}`, 9)); }
+  y += 3; line("Documents read", 12, true, [86, 119, 108]); results.filter((r) => !/other|skip/.test(r.kind)).forEach((r) => line(`${r.file} (${r.label}${r.date ? ", " + C.fmtAu(r.date) : ""})`, 8.5, false, [95, 102, 100]));
+  return doc;
+}
+const pdfName = () => `${today()} Client Profile - ${safe(val(P.entity.name) || P.client)}.pdf`;
+$("#dlPdf").onclick = () => { buildPdf().save(pdfName()); $("#exportMsg").textContent = "PDF downloaded."; };
+$("#savePdf").onclick = async () => {
+  const client = $("#client").value.trim();
+  if (!account || !folders.includes(client)) { $("#exportMsg").textContent = "Sign in and choose the client folder to save to SuiteFiles."; return; }
+  const sub = /^Company/.test(val(P.entity.kind)) ? "Corporate Compliance" : "Permanent", name = pdfName(), blob = buildPdf().output("blob");
+  $("#exportMsg").innerHTML = '<span class="spin"></span>Saving…';
+  try {
+    const dir = `${CONFIG.clientsRoot}/${client}/${sub}`;
+    const chk = await graph("GET", `/drives/${CONFIG.driveId}/root:/${enc(dir)}`);
+    if (chk.status === 404) await graph("POST", `/drives/${CONFIG.driveId}/root:/${enc(CONFIG.clientsRoot + "/" + client)}:/children`, JSON.stringify({ name: sub, folder: {}, "@microsoft.graph.conflictBehavior": "fail" }));
+    let r = await graph("PUT", `/drives/${CONFIG.driveId}/root:/${enc(dir + "/" + name)}:/content?@microsoft.graph.conflictBehavior=fail`, blob, { "Content-Type": "application/pdf" });
+    if (r.status === 409) { if (!confirm(`${name} is already in ${sub}. Replace it?`)) { $("#exportMsg").textContent = "Not saved."; return; } r = await graph("PUT", `/drives/${CONFIG.driveId}/root:/${enc(dir + "/" + name)}:/content?@microsoft.graph.conflictBehavior=replace`, blob, { "Content-Type": "application/pdf" }); }
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json(); $("#exportMsg").innerHTML = `Saved to ${esc(sub)}. <a href="${esc(j.webUrl || "#")}" target="_blank" rel="noopener">Open it</a>`;
+  } catch (e) { console.error(e); $("#exportMsg").textContent = "Couldn't save to SuiteFiles. Try again, or download the PDF instead."; }
+};
+$("#copyKarbon").onclick = () => {
+  const rows = profileRows(false).map((r) => `${r.Detail}: ${r.Value || "Not found"}`).join("\n");
+  const ppl = C.exportsFor(P, {}).karbonPeople.map((p) => `${p["First Name"]} ${p["Middle Name"]} ${p["Last Name"]}`.replace(/\s+/g, " ") + ` (${p.Role})`).join("\n");
+  navigator.clipboard.writeText(`${rows}\n\nPeople\n${ppl}`); $("#exportMsg").textContent = "Summary copied. Paste it into the Karbon organisation's notes.";
+};
+initAuth();
+</script>
+</body>
+</html>
