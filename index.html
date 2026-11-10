@@ -97,6 +97,21 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
 .longtext{font-size:12.5px;color:var(--ix-ink);background:var(--ix-bg);border-radius:10px;padding:10px 12px;line-height:1.55}
 .exports{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .checks{display:flex;gap:20px;flex-wrap:wrap;font-size:13.5px;margin:4px 0 14px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+.tabbtn{font:500 13px var(--ix-font);color:var(--ix-deep);background:var(--ix-card);border:1px solid var(--ix-line);border-radius:999px;padding:7px 14px;cursor:pointer;text-align:left}
+.tabbtn small{display:block;font-size:11px;color:var(--ix-muted);font-weight:400}
+.tabbtn[aria-selected="true"]{background:#56776C;border-color:#56776C;color:#fff}
+.tabbtn[aria-selected="true"] small{color:rgba(255,255,255,.8)}
+.tabbtn:focus-visible,.btn:focus-visible,.copy:focus-visible,.link:focus-visible{outline:none;box-shadow:0 0 0 4px var(--ix-ring)}
+.linklist{list-style:none;margin:0 0 14px;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px 18px;font-size:13.5px}
+.linklist label{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.linklist input{accent-color:#56776C;width:16px;height:16px;margin-top:2px;flex:none}
+.linklist small{display:block;font-size:11.5px;color:var(--ix-muted)}
+.linklist .done{color:var(--ix-muted)}
+td .tag.fill{background:var(--ix-tint);color:var(--ix-deep)}
+.ptable td{padding:7px 8px;font-size:12.5px}
+#profile table:not(.ptable){min-width:980px}
+#profile td input{min-width:90px}
 .checks label{display:flex;gap:8px;align-items:center;cursor:pointer}
 .checks input{accent-color:#56776C;width:16px;height:16px}
 .hidden{display:none!important}
@@ -115,11 +130,14 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
 
   <section class="card">
     <h2><span class="n">1</span>Choose the client</h2>
-    <p class="lead">Reads the client's Corporate Compliance, Permanent, AML, CAS-360 and Engagement folders, plus the last two years of tax returns. The newest dated document wins for every detail.</p>
+    <p class="lead">Pick one client, or add several that belong together (a company, its shareholders and their trusts) and read them in one go. Clients you read later are added to the same profile, not swapped for it. Reads each client's Corporate Compliance, Permanent, AML, CAS-360 and Engagement folders, the ATO registration letters in Correspondence, and the last two years of tax returns. The newest dated document wins for every detail.</p>
     <div class="row">
       <label class="f" style="flex:1 1 360px">Client folder<input type="search" id="client" list="clientList" placeholder="Start typing a client name" autocomplete="off"></label>
+      <button class="btn ghost" id="addClient" type="button">Add another client</button>
       <button class="btn" id="read" type="button" disabled>Read documents</button>
+      <button class="btn ghost hidden" id="reset" type="button">Start a new profile</button>
     </div>
+    <ul class="linklist" id="picked" style="margin:12px 0 0"></ul>
     <div class="drop" id="drop" tabindex="0" role="button" style="margin-top:14px">Or drop documents here from your computer (they're read alongside SuiteFiles)</div>
     <input type="file" id="file" multiple hidden accept=".pdf,.docx,.png,.jpg,.jpeg">
     <div id="progress" class="hidden" style="margin-top:12px;font-size:13px"></div>
@@ -136,9 +154,22 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
     <div id="profile"></div>
   </section>
 
+  <section class="card hidden" id="groupCard">
+    <h2><span class="n">3</span>Linked entities</h2>
+    <p class="lead">Read the folders of related clients (shareholders, the trusts they hold shares for, directors with their own folder) to fill gaps like Director IDs and to see the whole group. Tick the folders to include, add any that are missing, then read them. Nothing outside the ticked folders is read.</p>
+    <div id="groupBody"></div>
+    <div class="row" style="margin-top:4px">
+      <label class="f" style="flex:1 1 320px">Add another client folder<input type="search" id="addLink" list="clientList" placeholder="Start typing a client name" autocomplete="off"></label>
+      <button class="btn ghost" id="addLinkBtn" type="button">Add folder</button>
+      <button class="btn" id="readLinks" type="button" disabled>Read ticked folders</button>
+    </div>
+    <div id="groupProgress" style="margin-top:12px;font-size:13px"></div>
+    <ul class="files" id="groupFiles"></ul>
+  </section>
+
   <section class="card hidden" id="exportCard">
-    <h2><span class="n">3</span>Use it</h2>
-    <p class="lead">One spreadsheet with a tab each for Karbon (organisations and people), XPM (client and relationships) and CAS 360 (company, officers, members, trust), plus a profile PDF for SuiteFiles.</p>
+    <h2><span class="n">4</span>Use it</h2>
+    <p class="lead">One spreadsheet with a tab each for Karbon (organisations and people), XPM (client and relationships) and CAS 360 (company, officers, members, trust), covering every entity you've read. The profile PDF is for the entity on screen and saves to that entity's own folder.</p>
     <div class="checks"><label><input type="checkbox" id="inclSens">Include sensitive details in the spreadsheet and PDF</label></div>
     <div class="exports">
       <button class="btn" id="xlsx" type="button">Download spreadsheet</button>
@@ -185,11 +216,35 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
   const acnFmt = (s) => { const d = (s || "").replace(/\D/g, ""); return d.length === 9 ? d.replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3") : ""; };
   const pick = (t, re) => { const m = t.match(re); return m ? flat(m[1]) : ""; };
   const key = (n) => (n || "").toLowerCase().replace(/[^a-z]/g, "");
+  const ENT_RE = /\b(?:Pty|Ltd|Limited|Trust|Fund|Superannuation|Incorporated|Inc|Partnership|Holdings|Corporation|Company)\b/i;
+  // person key: first + last name only, so "Lloyd Bartlett", "MR LLOYD JONATHAN BARTLETT" and "Lloyd Jonathon Bartlett" are one person
+  function pkey(n) {
+    n = (n || "").replace(/<[^>]*>/g, " ").replace(/^\s*(?:mr|mrs|ms|miss|dr|mstr)\.?\s+/i, "").trim();
+    if (ENT_RE.test(n)) return "e:" + n.toLowerCase().replace(/\bthe\b|\bpty\b\.?|\bltd\b\.?|\blimited\b|[^a-z0-9]/g, "");
+    const p = n.toLowerCase().replace(/[^a-z\s'\-]/g, " ").split(/\s+/).filter(Boolean);
+    return p.length > 1 ? p[0] + "|" + p[p.length - 1] : p.join("");
+  }
+  // ATO letters and some scans come through with a space between every letter: put the words back together
+  function despace(t) {
+    t = t || ""; const toks = t.split(/\s+/).filter(Boolean);
+    if (toks.length < 30 || toks.filter((x) => x.length === 1).length / toks.length < 0.45) return t;
+    return t.split(/\n/).map((line) => line.split(/ {2,}/).map((w) => w.replace(/ /g, "")).join(" ")).join("\n").replace(/\b(20\d) (\d)\b/g, "$1$2");
+  }
+  const ORD = { first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7, eighth: 8, ninth: 9, tenth: 10, eleventh: 11, twelfth: 12, thirteenth: 13, fourteenth: 14, fifteenth: 15, sixteenth: 16, seventeenth: 17, eighteenth: 18, nineteenth: 19, twentieth: 20, thirtieth: 30 };
+  function ordNum(w) { w = w.toLowerCase().replace(/[\s\-]+/g, " ").trim(); if (/^\d+/.test(w)) return parseInt(w, 10); if (ORD[w]) return ORD[w]; const m = w.match(/^(twenty|thirty) (\w+)$/); return m && ORD[m[2]] && ORD[m[2]] < 10 ? (m[1] === "twenty" ? 20 : 30) + ORD[m[2]] : null; }
+  function wordDate(t) {
+    const m = (t || "").match(new RegExp("(?:the\\s+)?((?:twenty|thirty)[\\s\\-]+\\w+|\\w+|\\d{1,2}(?:st|nd|rd|th)?)\\s+day\\s+of\\s+" + MRE + ",?\\s+(\\d{4})", "i"));
+    if (!m) return null; const d = ordNum(m[1]); return d ? mk(m[3], MON[m[2].toLowerCase()], d) : null;
+  }
+  const STATE = "(?:QLD|NSW|VIC|SA|WA|TAS|NT|ACT|Queensland|New South Wales|Victoria)";
+  const ADDR_END = STATE + ",?\\s+\\d{4}";
 
   /* ---------- classify ---------- */
   function classify(text, name) {
+    text = despace(text);
     const t = flat(text).slice(0, 6000), n = name || "";
     if (/Client Profile/i.test(n)) return "skip";
+    if (/Australian Taxation Office/i.test(t) && /registered you for|registration takes effect|tax file number registration|details of your registration/i.test(t)) return "ato_reg";
     if (/Current (?:& Historical )?(?:Organisation|Company) Extract|ASIC Current|Historical Organisation Extract/i.test(t) && /Company Officers|Office ?holders/i.test(flat(text))) return "asic_extract";
     if (/REGISTER OF DIRECTORS (?:&|AND) SECRETARIES/i.test(flat(text)) || /REGISTER OF MEMBERS AS AT/i.test(flat(text)) || /CONSENT TO ACT AS/i.test(flat(text)) || /Document Type: Directors Resolution/i.test(flat(text))) return "cas_pack";
     if (/Application for registration as an Australian company|Form 201/i.test(t)) return "form201";
@@ -203,6 +258,8 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
     if (/Tax Return \d{4}|TFN Recorded/i.test(t)) return "tax_return";
     if (/Trustee declaration/i.test(t)) return "trustee_decl";
     if (/Consent to Act|Member\/?s Resolution|Register of Directors|Register of Members/i.test(t)) return "cas_pack";
+    if (/Registered Address:.{0,200}Share Certificate|Incorporated in .{2,40} on \d{1,2}\/\d{1,2}\/\d{4}/i.test(t)) return "cas_pack";
+    if (/NOTICE OF BENEFICIAL OWNERSHIP|DECLARATION OF TRUST/i.test(t) && /Beneficial Owner/i.test(t)) return "ben_notice";
     return "other";
   }
 
@@ -261,6 +318,55 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
     return out;
   }
 
+  function holderSplit(txt) {
+    // "Egret Developments Pty Ltd <Beneficially Held by X Trust> 152179550 171 Palmview Forest Drive, ..." -> name, ACN, address, trust
+    let w = flat(txt).replace(/^.*?Benef\. Held Y\/N\s*/i, "");
+    const ben = w.match(/<\s*Beneficially Held by\s+(.+?)\s*>/i) || w.match(/<\s*(?:ATF|A\/C|AC)\s+(.+?)\s*>/i) || w.match(/<\s*(.+?)\s*>/);
+    w = flat(w.replace(/<[^>]*>/g, " "));
+    const m = w.match(/^(.+?)\s+(?:(\d{9}|\d{11})\s+)?((?:Unit|Level|Lot|Shop|Suite|PO Box|P\.?O\.? Box|GPO Box|U\d|\d).*)$/i);
+    const name = m ? m[1].trim() : w, acn = m && m[2] ? acnFmt(m[2]) : "", address = m ? m[3].replace(/\s*,\s*$/, "").trim() : "";
+    const names = ENT_RE.test(name) ? [name] : name.split(/\s+and\s+|\s*&\s*/i).map((x) => x.trim()).filter(Boolean);
+    return { holders: names.map((n) => ({ name: title(n), address: title(address), acn: ENT_RE.test(n) ? acn : "" })), onBehalfOf: ben ? title(ben[1]) : "" };
+  }
+  function parseRegister(body) {
+    const anchors = [...body.matchAll(/([A-Z0-9]{1,6})\s+-\s+([A-Z0-9 ]+?SHARES)\s+Date of Entry:\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+Date of Cessation:\s*(\d{1,2}\/\d{1,2}\/\d{4})?/g)];
+    const rowEnd = /\$[\d.,]+\s+\$[\d.,]+\s+[YN]\b/g;
+    // each holder's name sits between the previous holder's last transaction row and this holder's share class line
+    const hStart = anchors.map((a, i) => {
+      const from = i ? anchors[i - 1].index + anchors[i - 1][0].length : 0, seg = body.slice(from, a.index); let last = 0, m; rowEnd.lastIndex = 0;
+      while ((m = rowEnd.exec(seg))) last = m.index + m[0].length;
+      return from + last;
+    });
+    return anchors.map((a, i) => {
+      const h = holderSplit(body.slice(hStart[i], a.index)), rowsTxt = body.slice(a.index + a[0].length, i + 1 < anchors.length ? hStart[i + 1] : body.length);
+      const rows = [...rowsTxt.matchAll(/(\d{1,2}\/\d{1,2}\/\d{4})\s+(Subscription|Allotment|Issue|Balance|Transfer(?:\s+(?:in|out))?|Cancellation|Buy[ \-]?Back|Conversion|Redemption)\s+(-?[\d,]+)(?:\s+(-?[\d,]+))?\b(.*?)\$([\d.,]+)\s+\$([\d.,]+)\s+([YN])\b/gi)];
+      const last = rows[rows.length - 1], bal = last ? +String(last[4] != null ? last[4] : last[3]).replace(/,/g, "") : null;
+      const ceased = pd(a[4] || "") || (bal === 0 && last ? pd(last[1]) : null);
+      return { cls: a[1], className: title(a[2]), holders: h.holders, number: bal, paidPer: last ? last[6] : "", unpaidPer: last ? last[7] : "", fullyPaid: last ? +last[7].replace(/,/g, "") === 0 : true,
+        beneficial: h.onBehalfOf ? false : last ? last[8].toUpperCase() === "Y" : true, onBehalfOf: h.onBehalfOf, entered: pd(a[3]), ceased };
+    });
+  }
+  // notices of beneficial ownership and declarations of trust: who holds shares for which trust
+  function benPairs(t) {
+    const out = [];
+    for (const m of t.matchAll(/NOTICE OF BENEFICIAL OWNERSHIP.*?Member\s+(.+?)\s+Address\s+.+?\s+Beneficial Owner\s+(.+?)\s+Address\b/gi)) out.push({ holder: m[1], trust: title(m[2]) });
+    for (const m of t.matchAll(/SCHEDULE\s+The Trustee\s+(.+?)\s+Address\s+.+?The Beneficial Owner\s+(.+?)\s+Address\b/gi)) out.push({ holder: m[1], trust: title(m[2]) });
+    return out;
+  }
+  // registered office and incorporation details that CAS 360 prints on consents, occupier's consents and share certificates
+  function casCompanyBits(t, c) {
+    const a = t.match(new RegExp("registered office of the company\\.\\s+((?:Unit|Level|Suite|Shop|Lot|\\d).{5,120}?" + ADDR_END + ")", "i"))
+      || t.match(new RegExp("The Directors,\\s+.{3,90}?(?:Pty\\.? Ltd\\.?|Limited|Ltd)\\s+((?:Unit|Level|Suite|Shop|Lot|\\d).{5,120}?" + ADDR_END + ")\\s+I hereby consent", "i"))
+      || t.match(new RegExp("Registered Address:\\s+(?:Certificate Number:\\s+\\S+(?: \\(balance\\))?\\s+)?((?:Unit|Level|Suite|Shop|Lot|\\d).{5,120}?" + ADDR_END + ")", "i"));
+    if (a) c.regOffice = title(a[1]);
+    const inc = t.match(/Incorporated in\s+([A-Za-z ]{2,30}?)\s+on\s+(\d{1,2}\/\d{1,2}\/\d{4})/i);
+    if (inc) { c.state = c.state || title(inc[1]); c.registered = pd(inc[2]); }
+  }
+  function parseBenNotice(text) {
+    const t = flat(text);
+    return { kind: "ben_notice", label: /DECLARATION OF TRUST/i.test(t) ? "Declaration of trust" : "Notice of beneficial ownership", date: pd(pick(t, /(?:Dated|Date):?\s+(\d{1,2}\/\d{1,2}\/\d{4})/i)) || firstDate(t), benPairs: benPairs(t), company: {} };
+  }
+
   function parseCasPack(text) {
     const t = flat(text);
     const out = { kind: "cas_pack", label: "CAS 360 registers", date: null, company: {}, officers: [], events: [], members: [], publicOfficer: null, directorIds: {} };
@@ -279,27 +385,17 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
         while ((q = posRe.exec(m[4]))) out.officers.push({ name: title(ps.name), address: title(ps.address), dob: pd(m[2]), pob: title(m[3]), role: title(q[1]), appointed: pd(q[2]), ceased: pd(q[3] || "") });
       }
     }
-    // register of members
-    const rm = t.match(/REGISTER OF MEMBERS AS AT (\d{1,2}\/\d{1,2}\/\d{4})(.*?)(?=REGISTER OF DIRECTORS|CONSENT TO ACT|Company Name:|ALLOTMENT JOURNAL|SHARE CERTIFICATE|$)/i);
+    // register of members (current and historical CAS 360 layouts)
+    const rm = t.match(/REGISTER OF MEMBERS AS AT (\d{1,2}\/\d{1,2}\/\d{4})(.*?)(?=REGISTER OF DIRECTORS|CONSENT TO ACT|Company Name:|ALLOTMENT JOURNAL|SHARE CERTIFICATE|TRANSFER JOURNAL|Standard Transfer Form|NOTICE OF BENEFICIAL|DECLARATION OF TRUST|$)/i);
     if (rm) {
       out.date = out.date && out.date > pd(rm[1]) ? out.date : pd(rm[1]);
-      const re = /(.+?)\s+([A-Z0-9]{1,6})\s+-\s+([A-Z0-9 ]+?SHARES)\s+Date of Entry:\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+Date of Cessation:\s*(\d{1,2}\/\d{1,2}\/\d{4})?(.*?)(?=\s+[A-Z][a-z]+(?: [A-Z][a-z'\-]+)+(?: <[^>]*>)?\s+(?:Unit|Level|PO Box|\d)|$)/g;
-      let m;
-      while ((m = re.exec(rm[2]))) {
-        let who = m[1].replace(/^.*?Benef\. Held Y\/N\s+\S+.*?\s(?=[A-Z][a-z])/, "");
-        const ben = who.match(/<\s*Beneficially Held by\s+(.+?)\s*>/i) || who.match(/<\s*(.+?)\s*>/);
-        who = who.replace(/<[^>]*>/g, " ");
-        const ps = personSplit(flat(who));
-        const rows = [...m[6].matchAll(/(\d{1,2}\/\d{1,2}\/\d{4})\s+(Balance|Allotment|Transfer(?: In| Out)?|Cancellation|Buy Back|Conversion)\s+(\d+)\s+(\d+)?.*?\$([\d.,]+)\s+\$([\d.,]+)\s+([YN])\b/g)];
-        const last = rows[rows.length - 1];
-        out.members.push({ cls: m[2], className: title(m[3]), holders: [{ name: title(ps.name), address: title(ps.address) }], number: last ? +(last[4] || last[3]) : null, paidPer: last ? last[5] : "", unpaidPer: last ? last[6] : "", beneficial: last ? last[7] === "Y" : !ben, onBehalfOf: ben ? title(ben[1]) : "", entered: pd(m[4]), ceased: pd(m[5] || "") });
-      }
+      out.members = parseRegister(rm[2]);
     }
     // consents to act
-    for (const m of t.matchAll(/CONSENT TO ACT AS ([A-Z ,&]+?)\s+AND STATUTORY INFORMATION.*?Full Name\s+(.+?)\s+Residential Address\s+(.+?)\s+Date of Birth\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+Place of Birth\s+(.+?)\s+Appointment Date\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+Director ID\s+(\d{15}|Director ID number not provided|\S+)/gi)) {
+    for (const m of t.matchAll(/CONSENT TO ACT AS ([A-Z ,&]+?)\s+AND STATUTORY INFORMATION.*?Full Name\s+(.+?)\s+Residential Address\s+(.+?)\s+Date of Birth\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+Place of Birth\s+(.+?)\s+Appointment Date\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+Director ID\s+(\d[\d ]{13,24}\d|Director ID number not provided|\S+)/gi)) {
       const roles = m[1].split(/,|&|AND/i).map((x) => title(x.trim())).filter(Boolean);
       for (const role of roles) out.events.push({ type: "appoint", role, name: title(m[2]), address: title(m[3]), dob: pd(m[4]), pob: title(m[5]), date: pd(m[6]) });
-      if (/^\d{15}$/.test(m[7])) out.directorIds[key(m[2])] = m[7];
+      const did = m[7].replace(/\s/g, ""); if (/^\d{15}$/.test(did)) out.directorIds[pkey(m[2])] = did;
     }
     // older consent format (Acis incorporation packs)
     for (const m of t.matchAll(/consent to act as (?:a )?([A-Za-z ,]+?) of the Company.*?Full Name:\s+(.+?)\s+Residential Address:\s+(.+?)\s+(?:Former Name\/s:\s+.*?)?Date of Birth:\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+Place of Birth:\s+(.+?)\s+Dated:\s+(\d{1,2}\/\d{1,2}\/\d{4})/gi)) {
@@ -310,6 +406,7 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
     for (const m of t.matchAll(/Resignation of (Director|Secretary|Public Officer)s?:.*?be accepted:\s+(.+?), resignation effective from (\d{1,2}\/\d{1,2}\/\d{4})/gi)) out.events.push({ type: "cease", role: title(m[1]), name: title(m[2]), date: pd(m[3]) });
     for (const m of t.matchAll(/RESIGNATION OF (DIRECTOR|SECRETARY)\s+I hereby resign as the (?:Director|Secretary) of .+? effective from (\d{1,2}\/\d{1,2}\/\d{4})\..*?_+\s+(.+?)\s+\/Digital/gi)) out.events.push({ type: "cease", role: title(m[1]), name: title(m[3]), date: pd(m[2]) });
     const po = t.match(/([A-Z][A-Za-z'\-]+(?: [A-Z][A-Za-z'\-]+){1,3}) was appointed as the Public Officer/); if (po) out.publicOfficer = title(po[1]);
+    out.benPairs = benPairs(t); casCompanyBits(t, out.company);
     if (!out.date) { const ds = out.events.map((e) => e.date).filter(Boolean).sort(); out.date = ds[ds.length - 1] || firstDate(t); }
     return out;
   }
@@ -334,7 +431,7 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
     out.company.name = title(pick(t, /This is to certify that\s+(?:.{0,70}?\s)?([A-Z0-9][A-Z0-9&'.\- ]{1,60}?\s(?:PTY\.? LTD\.?|PTY\.? LIMITED|LIMITED|LTD))\b/));
     out.company.acn = acnFmt(pick(t, /Australian Company Number\s+(\d{3} ?\d{3} ?\d{3})/i));
     out.company.state = pick(t, /taken to be registered in\s+([A-Za-z ]+?)\./i);
-    out.date = out.company.registered = firstDate(t) || null;
+    out.date = out.company.registered = firstDate(t) || wordDate(t) || null;
     return out;
   }
 
@@ -403,13 +500,55 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
     return out;
   }
   function parseAbn(text) {
-    const t = flat(text);
-    const out = { kind: "abn", label: "ABN record", date: firstDate(t), entity: {} };
-    out.entity.abn = abnFmt(pick(t, /(?:ABN Advice Letter|ABN|Australian Business Number)\s*:?\s+(\d{2} ?\d{3} ?\d{3} ?\d{3})/i));
-    out.entity.name = title(pick(t, /ABN Advice Letter\s+[\d ]{11,14}\s+(.+?)\s+Active/i) || pick(t, /Entity name:?\s+(.+?)\s+(?:ABN status|Entity type)/i));
+    const t = flat(text), out = { kind: "abn", label: "ABN record", date: null, entity: {}, people: [], company: {} }, e = out.entity;
+    const isApp = /Application for Australian business number/i.test(t), isConf = /Your ABN:/i.test(t);
+    if (isConf) {
+      out.label = "ABN confirmation"; e.abn = abnFmt(pick(t, /Your ABN:\s+(\d{2} ?\d{3} ?\d{3} ?\d{3})/i)); e.name = title(pick(t, /Your name:\s+(.+?)\s+Your ABN/i));
+      out.date = e.abnFrom = pd(pick(t, /Active from\s+(\d{1,2}\/\d{1,2}\/\d{4})/i)); if (out.date) e.abnStatus = "Active";
+    } else if (isApp) {
+      // the application lists associates' ABNs too, so never take an ABN from it
+      out.label = "ABN application"; out.date = pd(pick(t, /Date:\s+(\d{1,2}\/\d{1,2}\/\d{4})/i)) || firstDate(t);
+      e.name = title(pick(t, /Name of the Australian [A-Za-z ]+?:\s*\*?\s+([A-Z0-9&'.,\- ]+?(?:PTY\.? LTD\.?|LIMITED|LTD|TRUST|FUND))\b/));
+      e.email = pick(t, /email address for the [A-Za-z ]+?\?\s*\*?\s+(\S+@\S+)/i);
+      for (const seg of t.split(/Preferred name:/i).slice(1)) {
+        const first = pick(seg, /^\s*(\S+)/), last = pick(seg, /Family name:\s*\*?\s+(\S+)/i), pos = pick(seg, /Position held:\s*\*?\s+(.+?)\s{1,}(?:Business|Contact|Area|$)/i);
+        const mob = pick(seg, /Mobile:\s+(\d{10})/i), em = pick(seg, /Email address:\s+(\S+@\S+)/i);
+        if (!first || /tax agent/i.test(pos) || /indepth/i.test(em)) continue;
+        out.people.push({ name: title(first + " " + last), role: "", email: em, phone: mob });
+      }
+      for (const m of t.matchAll(/\b(?:Mr|Mrs|Ms|Miss|Dr)\s+([A-Z][A-Z'\- ]+?)\s+((?:Company Secretary|Director|Public Officer|Company Shareholder|Partner|Trustee)(?:,\s*(?:Company Secretary|Director|Public Officer|Company Shareholder|Partner|Trustee))*)\s+(?:DOB:\s*(\d{1,2}\/\d{1,2}\/\d{4}))?/g)) {
+        out.people.push({ name: title(m[1]), dob: pd(m[3] || ""), positions: m[2] });
+        if (/Public Officer/i.test(m[2])) out.publicOfficer = title(m[1]);
+      }
+    } else {
+      out.label = "ABN advice"; const head = t.match(/^(?:.*?ABN Advice Letter\s+)?(\d{2} \d{3} \d{3} \d{3})\s+(.+?)\s+(Active|Cancelled)\s+(\d{1,2} \w+ \d{4}|\d{1,2}\/\d{1,2}\/\d{4})\s+(.*)$/i);
+      if (head) {
+        e.abn = abnFmt(head[1]); e.name = title(head[2]); e.abnStatus = title(head[3]); out.date = e.abnFrom = pd(head[4]);
+        const ad = head[5].match(new RegExp("^(.+?" + ADDR_END + ")\\s+(.+?" + ADDR_END + ")?", "i"));
+        if (ad) { e.postal = title(ad[1]); if (ad[2] && !/@/.test(ad[2])) e.business = title(ad[2]); }
+      } else { e.abn = abnFmt(pick(t, /(?:ABN|Australian Business Number)\s*:?\s+(\d{2} ?\d{3} ?\d{3} ?\d{3})/i)); out.date = firstDate(t); }
+      e.email = pick(t, /\b([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})\b/i);
+      e.entityType = pick(t, /\b((?:Australian )?(?:Private|Public) Company|Discretionary (?:Trading|Investment|Services) Trust|Fixed Unit Trust|Hybrid Trust|ATO Regulated Self-Managed Superannuation Fund|Family Partnership|Other Partnership|Individual\/Sole Trader)\b/i);
+      const anz = t.match(/\b(\d{4,5}) - ([A-Z][A-Za-z ,&\-]+?)(?=\s+\d{9}\b|\s+Position held|\s+Australian Business Register|$)/); if (anz) e.anzsic = anz[1] + " " + anz[2];
+    }
     const g = t.match(/Goods (?:&|and) Services Tax \(GST\):?\s+(Registered from|Not currently registered)\s*(\d{1,2} \w+ \d{4}|\d{1,2}\/\d{1,2}\/\d{4})?/i);
-    if (g) { out.entity.gst = /Registered/i.test(g[1]) ? "Registered" : "Not registered"; out.entity.gstFrom = pd(g[2] || ""); }
-    out.entity.entityType = pick(t, /Entity type:?\s+(.+?)\s+(?:Goods|ABN|Main business)/i);
+    if (g) { e.gst = /Registered/i.test(g[1]) ? "Registered" : "Not registered"; e.gstFrom = pd(g[2] || ""); }
+    if (!e.entityType) e.entityType = pick(t, /Entity type:?\s+(.+?)\s+(?:Goods|ABN|Main business)/i);
+    return out;
+  }
+  // ATO registration letters: GST, PAYG withholding, fuel tax credits, TFN
+  function parseAtoReg(text) {
+    const t = flat(despace(text)), e = {}, out = { kind: "ato_reg", label: "ATO registration letter", date: firstDate(t), entity: e };
+    const eff = pd(pick(t, new RegExp("Date registration takes effect:?\\s+(\\d{1,2}\\s+" + MRE + "\\s+\\d{4}|\\d{1,2}\\/\\d{1,2}\\/\\d{4})", "i")));
+    if (/registered you for goods and services tax|Your GST registration/i.test(t)) {
+      out.label = "ATO GST registration"; e.gst = "Registered"; e.gstFrom = eff;
+      e.gstPeriod = pick(t, /GST tax periods:?\s+(Monthly|Quarterly|Annually|Annual)/i); e.gstBasis = pick(t, /GST accounting method:?\s+(Accruals?|Cash)/i).replace(/s$/, ""); e.gstReporting = pick(t, /GST reporting method:?\s+(Simpler BAS|Full reporting)/i);
+    } else if (/PAYG\)? withholding registration|registered you for PAYG withholding/i.test(t)) {
+      out.label = "ATO PAYG withholding registration"; e.paygw = "Registered"; e.paygwFrom = eff;
+      e.paygwCycle = pick(t, /payment cycle:?.{0,60}?\b(Monthly|Quarterly)\b/i); e.paygwType = pick(t, /withholder type:?.{0,60}?\b(Small|Medium|Large)\b/i);
+    } else if (/fuel tax credits/i.test(t) && /registered|registration/i.test(t)) { out.label = "ATO fuel tax credits registration"; e.ftc = "Registered"; e.ftcFrom = eff; }
+    else if (/tax file number registration|Your tax file number/i.test(t)) out.label = "ATO TFN registration";
+    const d = pick(t, new RegExp("\\b(\\d{1,2}\\s+" + MRE + "\\s+\\d{4})\\s+Your\\b", "i")); if (pd(d)) out.date = pd(d);
     return out;
   }
   function parseEngagement(text) {
@@ -427,7 +566,7 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
     const k = classify(text, name);
     const r = k === "asic_extract" ? parseAsicExtract(text) : k === "cas_pack" ? parseCasPack(text) : k === "form201" ? parseForm201(text) : k === "cert_reg" ? parseCertReg(text)
       : k === "trust_deed" ? parseTrustDeed(text) : k === "trustee_change" ? parseTrusteeChange(text) : k === "variation" ? { kind: "variation", label: "Deed of variation", date: firstDate(flat(text)) }
-      : k === "fte" ? parseFte(text) : k === "abn" ? parseAbn(text) : k === "engagement" ? parseEngagement(text) : k === "tax_return" ? parseTaxReturn(text) : { kind: k, label: k === "skip" ? "Earlier client profile (skipped)" : "Other document" };
+      : k === "fte" ? parseFte(text) : k === "abn" ? parseAbn(text) : k === "ato_reg" ? parseAtoReg(text) : k === "ben_notice" ? parseBenNotice(text) : k === "engagement" ? parseEngagement(text) : k === "tax_return" ? parseTaxReturn(text) : { kind: k, label: k === "skip" ? "Earlier client profile (skipped)" : "Other document" };
     r.file = name; return r;
   }
 
@@ -445,10 +584,12 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
     let latestExtract = null, latestSnapshot = null;
     const events = [];
     const person = (name, info, r) => {
-      if (!name) return; const k = key(name); const p = P.people[k] || (P.people[k] = { name, roles: new Set() });
-      for (const f of ["address", "dob", "pob", "directorId"]) if (info[f]) setF(p, f, info[f], r);
+      if (!name) return; const k = pkey(name); const p = P.people[k] || (P.people[k] = { name, roles: new Set() });
+      if (name.split(/\s+/).length > p.name.split(/\s+/).length) p.name = name; // keep the fullest version of the name
+      for (const f of ["address", "dob", "pob", "directorId", "email", "phone"]) if (info[f]) setF(p, f, info[f], r);
       if (info.role) p.roles.add(info.role);
     };
+    P.benMap = {};
     for (const r of byDate) {
       if (r.kind === "skip" || r.kind === "other") { P.sources.push({ ...src(r), used: false }); continue; }
       P.sources.push({ ...src(r), used: true });
@@ -463,10 +604,12 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
       if (r.events) r.events.forEach((e) => { events.push({ ...e, file: r.file }); person(e.name, e, r); });
       if (r.directorIds) for (const [k, id] of Object.entries(r.directorIds)) if (P.people[k]) setF(P.people[k], "directorId", id, r);
       if (r.publicOfficer) setF(P.company, "publicOfficer", r.publicOfficer, r);
+      if (r.people) r.people.forEach((x) => person(x.name, x, r));
+      if (r.benPairs) r.benPairs.forEach((b) => { P.benMap[pkey(b.holder)] = { trust: b.trust, file: r.file }; });
       if (r.kind === "trustee_change") events.push({ type: "trustees", retiring: r.retiring, newTrustees: r.newTrustees, newAppointors: r.newAppointors, date: r.date, file: r.file });
       if (r.kind === "variation") events.push({ type: "variation", date: r.date, file: r.file });
       if (r.kind === "fte") { setF(P.trust, "fteYear", r.fteYear, r); setF(P.trust, "specified", r.specified, r); }
-      if ((r.kind === "asic_extract" || r.kind === "cas_pack") && r.members && r.members.length) {
+      if ((r.kind === "asic_extract" || r.kind === "cas_pack") && r.members && r.members.length && r.members.some((m) => m.number != null || m.holders.length)) {
         if (!P._memDate || (r.date || "") >= P._memDate) { P._memDate = r.date || ""; P.members = r.members.map((m) => ({ ...m, file: r.file, date: r.date })); }
       }
       if (r.kind === "asic_extract" && r.shares.length) P.shares = r.shares.map((s) => ({ ...s, file: r.file, date: r.date }));
@@ -477,10 +620,24 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
     const history = snap ? snap.officers.filter((o) => o.ceased).map((o) => ({ ...o, source: snap.file })) : [];
     for (const e of events.filter((e) => e.role && e.date && (!snap || e.date > (snap.date || ""))).sort((a, b) => a.date.localeCompare(b.date))) {
       const i = officers.findIndex((o) => key(o.name) === key(e.name) && o.role === e.role);
-      if (e.type === "appoint" && i < 0) officers.push({ name: e.name, role: e.role, appointed: e.date, address: e.address || "", dob: e.dob || "", pob: e.pob || "", source: e.file, sourceDate: e.date, newer: true });
+      if (e.type === "appoint" && i < 0) officers.push({ name: e.name, role: e.role, appointed: e.date, address: e.address || "", dob: e.dob || "", pob: e.pob || "", source: e.file, sourceDate: e.date, newer: !!(snap && snap.kind === "asic_extract") });
       if (e.type === "cease" && i >= 0) { history.push({ ...officers[i], ceased: e.date, source: e.file }); officers.splice(i, 1); }
     }
-    P.officers = officers.map((o) => { const p = P.people[key(o.name)]; return { ...o, address: (p && p.address && p.address.value) || o.address, dob: o.dob || (p && p.dob && p.dob.value) || "", pob: o.pob || (p && p.pob && p.pob.value) || "", directorId: (p && p.directorId && p.directorId.value) || "" }; });
+    P.officers = officers.map((o) => { const p = P.people[pkey(o.name)]; return { ...o, address: (p && p.address && p.address.value) || o.address, dob: o.dob || (p && p.dob && p.dob.value) || "", pob: o.pob || (p && p.pob && p.pob.value) || "", directorId: (p && p.directorId && p.directorId.value) || "", email: (p && p.email && p.email.value) || "", phone: (p && p.phone && p.phone.value) || "" }; });
+    const regd = P.company.registered && P.company.registered.value;
+    if (regd) for (const o of [...P.officers, ...history]) if (o.appointed && o.appointed < regd) o.appointed = regd;
+    // public officer: use the officeholder's full name when the ATO record only has first and last name
+    if (P.company.publicOfficer) { const o = P.officers.find((x) => pkey(x.name) === pkey(P.company.publicOfficer.value)); if (o) P.company.publicOfficer.value = o.name; }
+    // shareholders: current holdings on screen, ceased ones kept as history
+    P.memberHistory = P.members.filter((m) => m.ceased || m.number === 0);
+    P.members = P.members.filter((m) => !m.ceased && m.number !== 0);
+    for (const m of P.members) for (const h of m.holders) if (!ENT_RE.test(h.name)) person(h.name, { address: h.address, role: "Shareholder" }, { date: m.date || null, file: m.file || "Register of members" });
+    // not beneficially held means the shares are held for a trust: find the trust, or flag it
+    for (const m of P.members) {
+      if (m.beneficial) continue;
+      if (!m.onBehalfOf) { const b = m.holders.map((h) => P.benMap[pkey(h.name)]).find(Boolean) || P.benMap[pkey(m.holders.map((h) => h.name).join(" and "))]; if (b) { m.onBehalfOf = b.trust; m.trustFrom = b.file; } }
+      if (!m.onBehalfOf) P.alerts.push(`Check this: ${m.holders.map((h) => h.name).join(" & ")} holds ${m.number ?? ""} shares that are not beneficially held, so they hold them for a trust, but no trust is named in the documents. Find the trust before setting this up.`);
+    }
     P.officerHistory = history;
     if (!P.company.publicOfficer && P.officers.some((o) => o.role === "Public Officer")) setF(P.company, "publicOfficer", P.officers.find((o) => o.role === "Public Officer").name, { date: null, file: "Officer list" });
     // trustees and appointors: deed, then changes in date order
@@ -503,13 +660,17 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
       const lodged = latestExtract.docs.filter((d) => /^484/.test(d.form)).sort((a, b) => (b.effective || "").localeCompare(a.effective || ""))[0];
       if (lodged) P.company.last484 = { value: `${fmt(lodged.effective)} (document ${lodged.no})`, date: latestExtract.date, file: latestExtract.file };
     } else if (P.entity.kind.value.startsWith("Company")) P.alerts.push("No ASIC extract found in SuiteFiles. Officer and shareholder details come from CAS 360 or incorporation documents only, so order a current extract to confirm them.");
+    if (!P.company.review && P.company.registered && P.company.registered.value) P.company.review = { value: P.company.registered.value, date: P.company.registered.date, file: "Worked out from the registration date (ASIC uses the registration anniversary unless changed)" };
     if (P.company.review && P.company.review.value && P.company.review.value >= new Date().toISOString().slice(0, 10)) P.company.nextReview = { ...P.company.review };
     else if (P.company.review && P.company.review.value) {
       const r = P.company.review.value; const d = new Date(r); while (d.toISOString().slice(0, 10) < new Date().toISOString().slice(0, 10)) d.setUTCFullYear(d.getUTCFullYear() + 1);
       P.company.nextReview = { value: d.toISOString().slice(0, 10), date: P.company.review.date, file: P.company.review.file };
     }
     if (P.entity.kind.value !== "Company" && !P.trust.trustees && /Trust|SMSF/.test(P.entity.kind.value)) P.alerts.push("No trustee found. The trust deed may be a scan the tool couldn't read, or it may not be in the Permanent folder.");
-    P.contact.emails = [...new Set(P.contact.emails)]; P.contact.phones = [...new Set(P.contact.phones)];
+    if (P.entity.email && P.entity.email.value) P.contact.emails.unshift(P.entity.email.value);
+    P.contact.emails = [...new Set(P.contact.emails)];
+    // names worth looking up as linked client folders
+    P.related = [...new Set([...P.members.flatMap((m) => [m.onBehalfOf, ...m.holders.map((h) => h.name)]), ...P.officers.map((o) => o.name), ...[].concat(v(P.trust.trustees) || [], v(P.trust.appointors) || [], v(P.trust.primary) || [], v(P.trust.unitholders) || [])])].filter(Boolean); P.contact.phones = [...new Set(P.contact.phones)];
     delete P._memDate;
     return P;
   }
@@ -525,7 +686,12 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
     const rels = [];
     P.officers.forEach((o) => rels.push({ person: o.name, relationship: o.role, entity: name, shares: "", percent: "", from: o.appointed }));
     const totalShares = P.members.reduce((a, m) => a + (m.number || 0), 0);
-    P.members.forEach((m) => m.holders.forEach((h) => rels.push({ person: h.name, relationship: "Shareholder", entity: name, shares: m.number || "", percent: totalShares ? Math.round((m.number / totalShares) * 10000) / 100 : "", from: m.entered || "", note: m.onBehalfOf ? "Held for " + m.onBehalfOf : !m.beneficial ? "Not beneficially held" : "" })));
+    P.members.forEach((m) => {
+      const pct = totalShares ? Math.round((m.number / totalShares) * 10000) / 100 : "", holderNames = m.holders.map((h) => h.name).join(" & ");
+      // shares not beneficially held belong to the trust; the registered holder is its trustee
+      if (!m.beneficial && m.onBehalfOf) { rels.push({ person: m.onBehalfOf, relationship: "Shareholder", entity: name, shares: m.number || "", percent: pct, from: m.entered || "", note: `Registered holder: ${holderNames} (as trustee${m.holders.length > 1 ? "s" : ""})` }); m.holders.forEach((h) => rels.push({ person: h.name, relationship: "Trustee of shareholder", entity: name, note: `Holds ${m.number} shares as trustee for ${m.onBehalfOf}` })); }
+      else m.holders.forEach((h) => rels.push({ person: h.name, relationship: "Shareholder", entity: name, shares: m.number || "", percent: pct, from: m.entered || "", note: !m.beneficial ? "Not beneficially held: trust not named, check" : m.holders.length > 1 ? "Joint holding" : "" }));
+    });
     if (v(P.company.publicOfficer) && !rels.some((r) => r.relationship === "Public Officer")) rels.push({ person: v(P.company.publicOfficer), relationship: "Public Officer", entity: name });
     (v(P.trust.trustees) || []).forEach((t) => rels.push({ person: t, relationship: "Trustee", entity: name }));
     (v(P.trust.appointors) || []).forEach((t) => rels.push({ person: t, relationship: "Appointor", entity: name }));
@@ -534,15 +700,15 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
     (v(P.trust.unitholders) || []).forEach((t) => rels.push({ person: t, relationship: "Shareholder", entity: name, note: "Unitholder" }));
     (v(P.trust.members) || []).forEach((t) => rels.push({ person: t, relationship: "Member", entity: name }));
     const people = {};
-    rels.forEach((r) => { const k = key(r.person); if (!people[k]) { const p = P.people[k] || {}; people[k] = { name: r.person, roles: new Set(), address: v(p.address), dob: v(p.dob), pob: v(p.pob), directorId: v(p.directorId) }; } people[k].roles.add(r.relationship); });
+    rels.forEach((r) => { const k = pkey(r.person); if (!people[k]) { const p = P.people[k] || {}; people[k] = { name: r.person, roles: new Set(), address: v(p.address), dob: v(p.dob), pob: v(p.pob), directorId: v(p.directorId) }; } people[k].roles.add(r.relationship); });
     const fy = "30 June";
     const karbonOrg = [{ "Organization Name": name, "Legal Name": name, "Entity Type": v(P.entity.kind), "Description": "", "Client Identifier": "", "Fiscal Year End Day": 30, "Fiscal Year End Month": 6,
       "Incorporated / Registration Date": fmtAu(v(P.company.registered) || v(P.trust.deedDate)), "Business Numbers (ABN)": v(P.entity.abn) || v(P.company.abn), "Company Number (ACN)": v(P.company.acn),
-      "Tax File Number": sens ? v(P.entity.tfn) : "", "Sales Tax Basis": "", "Sales Tax Period": "", "Physical Address": v(P.company.ppb) || v(P.company.regOffice), "Mailing Address": v(P.company.postal),
+      "Tax File Number": sens ? v(P.entity.tfn) : "", "Sales Tax Basis": v(P.entity.gstBasis), "Sales Tax Period": v(P.entity.gstPeriod), "Physical Address": v(P.company.ppb) || v(P.entity.business) || v(P.company.regOffice), "Mailing Address": v(P.company.postal) || v(P.entity.postal),
       "Legal Address (Registered Office)": v(P.company.regOffice), "Email": P.contact.emails[0] || "", "Phone": P.contact.phones[0] || "", "Client Group Name": "" }];
-    const karbonPeople = Object.values(people).map((p) => { const s = splitName(p.name); return { "First Name": s.first, "Middle Name": s.middle, "Last Name": s.last, "Preferred Name": s.first, "Date of Birth": sens ? fmtAu(p.dob) : "", "Email": "", "Phone": "", "Address": p.address, "Belongs To": name, "Role": [...p.roles].join(", ") }; });
+    const karbonPeople = Object.values(people).filter((p) => !ENT_RE.test(p.name)).map((p) => { const s = splitName(p.name), q = P.people[pkey(p.name)] || {}; return { "First Name": s.first, "Middle Name": s.middle, "Last Name": s.last, "Preferred Name": s.first, "Date of Birth": sens ? fmtAu(p.dob) : "", "Email": v(q.email), "Phone": v(q.phone), "Address": p.address, "Belongs To": name, "Role": [...p.roles].join(", ") }; });
     const xpmClient = [{ "Name": name, "Business Structure": isCo ? "Company" : /SMSF/.test(v(P.entity.kind)) ? "Superannuation Fund" : /Trust/.test(v(P.entity.kind)) ? "Trust" : "", "Business Number (ABN)": v(P.entity.abn) || v(P.company.abn), "Company Number (ACN)": v(P.company.acn), "Tax Number": sens ? v(P.entity.tfn) : "",
-      "Balance Month": "June", "GST Registered": v(P.entity.gst) === "Registered" ? "Yes" : v(P.entity.gst) ? "No" : "", "GST Period": "", "GST Basis": "", "Postal Address": v(P.company.postal) || v(P.company.regOffice), "Physical Address": v(P.company.ppb) || v(P.company.regOffice), "Email": P.contact.emails[0] || "", "Phone": P.contact.phones[0] || "" }];
+      "Balance Month": "June", "GST Registered": v(P.entity.gst) === "Registered" ? "Yes" : v(P.entity.gst) ? "No" : "", "GST Period": v(P.entity.gstPeriod), "GST Basis": v(P.entity.gstBasis), "Postal Address": v(P.company.postal) || v(P.entity.postal) || v(P.company.regOffice), "Physical Address": v(P.company.ppb) || v(P.entity.business) || v(P.company.regOffice), "Email": P.contact.emails[0] || "", "Phone": P.contact.phones[0] || "" }];
     const xpmRel = rels.map((r) => ({ "Client": r.entity, "Relationship": r.relationship, "Related Client": r.person, "Shares": r.shares || "", "Percentage": r.percent || "", "Start Date": fmtAu(r.from || ""), "Note": r.note || "" }));
     const casCompany = isCo ? [{ "Company Name": name, "ACN": v(P.company.acn), "ABN": v(P.entity.abn) || v(P.company.abn), "Incorporation Date": fmtAu(v(P.company.registered)), "Annual Review Date": fmtAu(v(P.company.nextReview) || v(P.company.review)), "State of Registration": v(P.company.state),
       "Company Type": v(P.company.type), "Company Class": v(P.company.cls), "Company Sub Class": v(P.company.subclass), "Registered Office": v(P.company.regOffice), "Principal Place of Business": v(P.company.ppb), "Postal Address": v(P.company.postal), "Ultimate Holding Company": v(P.company.holding) }] : [];
@@ -552,7 +718,58 @@ td .tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:var(--war
     return { karbonOrg, karbonPeople, xpmClient, xpmRel, casCompany, casOfficers, casMembers, casTrust, rels };
   }
 
-  const api = { classify, parse, merge, exportsFor, fmt, fmtAu, pd, title };
+  /* ---------- groups: several linked client folders read together ---------- */
+  const normName = (n) => (n || "").toLowerCase().replace(/<[^>]*>/g, " ").replace(/\bthe trustee for\b|\batf\b|\ba\/c\b|\bthe\b|\bpty\.?\b|\bltd\.?\b|\blimited\b|\band\b|[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
+  // which client folders match the people and entities found in a profile
+  function matchFolders(names, folders, self) {
+    const out = [];
+    for (const f of folders) {
+      if (f === self) continue; const ft = normName(f); if (!ft.length) continue;
+      for (const n of names) {
+        const nt = normName(n); if (!nt.length) continue;
+        const isEnt = ENT_RE.test(n) || ENT_RE.test(f);
+        const hit = isEnt ? ft.join(" ") === nt.join(" ") : nt.length > 1 && ft.length > 1 && ft.includes(nt[0]) && ft.includes(nt[nt.length - 1]) && ft.every((x) => nt.includes(x));
+        if (hit) { out.push({ folder: f, because: n }); break; }
+      }
+    }
+    return out;
+  }
+  // one list of people across every entity in the group; the newest detail wins
+  function groupPeople(list) {
+    const G = {};
+    for (const g of list) for (const [k, p] of Object.entries(g.P.people || {})) {
+      if (k.startsWith("e:")) continue;
+      const q = G[k] || (G[k] = { name: p.name, roles: [] });
+      if (p.name.split(/\s+/).length > q.name.split(/\s+/).length) q.name = p.name;
+      for (const f of ["address", "dob", "pob", "directorId", "email", "phone"]) {
+        const x = p[f]; if (!x || !x.value) continue;
+        if (!q[f] || (x.date || "") >= (q[f].date || "")) q[f] = { ...x, entity: g.name };
+      }
+    }
+    for (const g of list) {
+      for (const o of g.P.officers) { const q = G[pkey(o.name)]; if (q) q.roles.push(`${o.role}, ${g.name}`); }
+      for (const m of g.P.members) for (const h of m.holders) { const q = G[pkey(h.name)]; if (q) q.roles.push(`Shareholder, ${g.name}${m.onBehalfOf ? " (for " + m.onBehalfOf + ")" : ""}`); }
+      for (const t of [].concat(v(g.P.trust.trustees) || [])) { const q = G[pkey(t)]; if (q) q.roles.push(`Trustee, ${g.name}`); }
+      for (const t of [].concat(v(g.P.trust.appointors) || [])) { const q = G[pkey(t)]; if (q) q.roles.push(`Appointor, ${g.name}`); }
+      for (const t of [].concat(v(g.P.trust.primary) || [])) { const q = G[pkey(t)]; if (q) q.roles.push(`Beneficiary, ${g.name}`); }
+    }
+    return Object.values(G).filter((q) => q.roles.length).map((q) => ({ ...q, roles: [...new Set(q.roles)] }));
+  }
+  // fill each entity's officeholders from what the rest of the group knows (Director ID, birth details, address, contact)
+  function enrichFromGroup(list, people) {
+    const byKey = Object.fromEntries(people.map((q) => [pkey(q.name), q]));
+    for (const g of list) for (const o of g.P.officers) {
+      const q = byKey[pkey(o.name)]; if (!q) continue; o.filled = o.filled || [];
+      for (const f of ["directorId", "dob", "pob", "address", "email", "phone"]) {
+        if (!q[f]) continue;
+        const better = !o[f] || (f === "address" && q[f].entity !== g.name && (q[f].date || "") > (o.sourceDate || ""));
+        if (better && q[f].value !== o[f]) { o[f] = q[f].value; if (q[f].entity !== g.name) o.filled.push(`${f} from ${q[f].entity}`); }
+      }
+    }
+    for (const g of list) for (const [k, p] of Object.entries(g.P.people || {})) { const q = byKey[k]; if (q) for (const f of ["directorId", "dob", "pob", "address", "email", "phone"]) if (q[f] && !(p[f] && p[f].value)) p[f] = { value: q[f].value, date: q[f].date, file: `${q[f].file} (${q[f].entity})` }; }
+  }
+
+  const api = { classify, parse, merge, exportsFor, fmt, fmtAu, pd, title, pkey, matchFolders, groupPeople, enrichFromGroup, despace };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.ClientProfile = api;
 })(this);
 </script>
@@ -562,6 +779,7 @@ const CONFIG = { clientId: "191dcf6b-f13e-491c-9556-280d809b602a", tenantId: "e0
 const C = window.ClientProfile, $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 let msalApp = null, account = null, folders = [], results = [], P = null, localFiles = [];
+let group = [], cur = 0, groupPeople = [], linkPicks = new Map(), picked = []; // linkPicks: folder -> { because, checked }
 const note = (h, k) => { $("#msg").innerHTML = h ? `<div class="notice ${k || ""}">${h}</div>` : ""; };
 const enc = (p) => p.split("/").map(encodeURIComponent).join("/");
 
@@ -605,7 +823,11 @@ async function loadClients() {
   catch (e) { note("Couldn't load the client folders. Check you're signed in with your Indepth account.", "warn"); }
   updateRead();
 }
-function updateRead() { const c = $("#client").value.trim(); $("#read").disabled = !((account && folders.includes(c)) || localFiles.length); }
+function updateRead() {
+  const c = $("#client").value.trim();
+  $("#read").disabled = !((account && (folders.includes(c) || picked.length)) || localFiles.length);
+  if ($("#reset")) { $("#reset").classList.toggle("hidden", !group.length); $("#read").textContent = group.length ? "Add to this profile" : "Read documents"; }
+}
 $("#client").addEventListener("input", updateRead);
 
 /* ---------- reading documents ---------- */
@@ -616,12 +838,23 @@ async function ocr(img) {
   return (await ocrWorker.recognize(img)).data.text || "";
 }
 async function pageText(p) { const tc = await p.getTextContent(); return tc.items.map((it) => it.str + (it.hasEOL ? "\n" : "  ")).join(""); }
+const spaced = (t) => { const k = t.split(/\s+/).filter(Boolean); return k.length > 30 && k.filter((x) => x.length === 1).length / k.length > 0.45; };
+// ATO letters place every letter separately: rebuild the words from where each letter sits on the page
+async function pageTextPos(p) {
+  const tc = await p.getTextContent(); let out = "", prev = null;
+  for (const it of tc.items) {
+    if (!it.str) continue; const x = it.transform[4], y = it.transform[5], h = Math.abs(it.transform[3]) || 10;
+    if (prev) { if (Math.abs(y - prev.y) > h * 0.5) out += "\n"; else { const gap = x - prev.end; out += gap > h * 1.2 ? "  " : gap > h * 0.18 ? " " : ""; } }
+    out += it.str; prev = { y, end: x + (it.width || 0) }; if (it.hasEOL) { out += "\n"; prev = null; }
+  }
+  return out;
+}
 async function renderOcr(p) { const vp = p.getViewport({ scale: 2 }), cv = document.createElement("canvas"); cv.width = vp.width; cv.height = vp.height; await p.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise; return ocr(cv); }
 async function readBlob(name, blob, status) {
   const ext = (name.split(".").pop() || "").toLowerCase();
   if (ext === "pdf") {
     const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise, n = pdf.numPages, parts = [];
-    for (let i = 1; i <= Math.min(n, 60); i++) parts.push(await pageText(await pdf.getPage(i)));
+    for (let i = 1; i <= Math.min(n, 60); i++) { const pg = await pdf.getPage(i); let t = await pageText(pg); if (spaced(t)) t = await pageTextPos(pg); parts.push(t); }
     const chars = parts.slice(0, 3).join("").replace(/\s/g, "").length;
     if (chars < 25 * Math.min(n, 3)) { // scanned: read the first two and last four pages (trust deed schedules sit at the back)
       const want = [...new Set([1, 2, n - 3, n - 2, n - 1, n].filter((i) => i >= 1 && i <= n))], out = [];
@@ -639,35 +872,121 @@ async function collect(client) {
   const base = CONFIG.clientsRoot + "/" + client, top = await listChildren(base), files = [];
   const walk = async (path, depth) => { for (const it of await listChildren(path)) { if (it.folder && depth < 3) await walk(path + "/" + it.name, depth + 1); else if (it.file) files.push({ ...it, path }); } };
   for (const it of top) if (it.folder && WANT.test(it.name)) await walk(base + "/" + it.name, 1);
+  // ATO registration letters (ABN, TFN, GST, PAYG withholding, fuel tax credits) usually sit in Correspondence
+  const REG = /registration|\bABN\b|\bTFN\b|\bGST\b|PAYG|fuel tax/i;
+  const walkCorr = async (path, depth) => { for (const it of await listChildren(path)) { if (it.folder && depth < 3 && /\bATO\b|tax office|registration/i.test(it.name)) await walkCorr(path + "/" + it.name, depth + 1); else if (it.file && REG.test(it.name)) files.push({ ...it, path }); } };
+  for (const it of top) if (it.folder && /^correspondence$/i.test(it.name)) await walkCorr(base + "/" + it.name, 1);
   const years = top.filter((it) => it.folder && /^\d{4}$/.test(it.name)).map((it) => it.name).sort().slice(-2);
   for (const y of years) for (const it of await listChildren(base + "/" + y)) if (it.folder && /tax returns/i.test(it.name)) for (const f of await listChildren(base + "/" + y + "/" + it.name)) if (f.file && /tax return/i.test(f.name)) files.push({ ...f, path: base + "/" + y + "/" + it.name });
-  return files.filter((f) => /\.(pdf|docx|png|jpe?g)$/i.test(f.name) && !/client profile/i.test(f.name) && (f.size || 0) < 40e6).slice(0, 120);
+  const names = new Set(files.map((f) => f.path + "/" + f.name));
+  return files.filter((f) => /\.(pdf|docx|png|jpe?g)$/i.test(f.name) && !/client profile/i.test(f.name) && (f.size || 0) < 40e6)
+    .filter((f) => !(/_correspondence\.pdf$/i.test(f.name) && names.has(f.path + "/" + f.name.replace(/_correspondence\.pdf$/i, ".pdf")))) // skip the duplicate copy ATO portal downloads include
+    .slice(0, 160);
+}
+// read a list of documents, showing each one as it's read
+async function readJobs(jobs, prog, listEl, tag) {
+  const out = []; let i = 0;
+  for (const j of jobs) {
+    i++; const li = document.createElement("li"); li.innerHTML = `<span class="spin"></span><b title="${esc(j.where + " › " + j.name)}">${esc(j.name)}</b>`; listEl.appendChild(li);
+    prog(`<span class="spin"></span>${tag}Reading ${i} of ${jobs.length}: ${esc(j.name)}`);
+    try {
+      const { text, scanned } = await readBlob(j.name, await j.get(), (st) => prog(`<span class="spin"></span>${tag}Reading ${i} of ${jobs.length}: ${esc(j.name)}, ${st}`));
+      const r = C.parse(text, j.name); r.where = j.where; r.scanned = scanned; out.push(r);
+      li.innerHTML = `<b title="${esc(j.where + " › " + j.name)}">${esc(j.name)}</b><span class="k ${/other|skip/.test(r.kind) ? "no" : ""}">${esc(r.label)}${r.date ? ", " + C.fmt(r.date) : ""}${scanned ? ", scan" : ""}</span>`;
+    } catch (e) { console.error(e); li.innerHTML = `<b>${esc(j.name)}</b><span class="k no">couldn't open</span>`; }
+  }
+  return out;
+}
+const sfJobs = async (client) => (await collect(client)).map((f) => ({ name: f.name, where: f.path.split("/").slice(2).join(" › "), get: async () => { const r = await fetch(f["@microsoft.graph.downloadUrl"]); return r.blob(); } }));
+function renderPicked() {
+  $("#picked").innerHTML = picked.map((f) => `<li><span>${esc(f)}<small><button class="link" type="button" data-unpick="${esc(f)}">Remove</button></small></span></li>`).join("");
+  updateRead();
+}
+$("#addClient").onclick = () => {
+  const f = $("#client").value.trim();
+  if (!account) { note("Sign in with Microsoft to pick client folders.", "warn"); return; }
+  if (!folders.includes(f)) { note("Pick a client folder from the list.", "warn"); return; }
+  if (!picked.includes(f) && !group.some((g) => g.client === f)) picked.push(f);
+  $("#client").value = ""; note(""); renderPicked(); $("#client").focus();
+};
+$("#client").addEventListener("keydown", (e) => { if (e.key === "Enter" && folders.includes($("#client").value.trim())) { e.preventDefault(); $("#addClient").click(); } });
+$("#picked").addEventListener("click", (e) => { const b = e.target.closest("[data-unpick]"); if (b) { picked = picked.filter((x) => x !== b.dataset.unpick); renderPicked(); } });
+$("#reset").onclick = () => {
+  group = []; cur = 0; groupPeople = []; linkPicks = new Map(); picked = []; results = []; P = null; localFiles = [];
+  ["#files", "#groupFiles", "#picked"].forEach((x) => ($(x).innerHTML = "")); $("#progress").classList.add("hidden"); $("#groupProgress").textContent = "";
+  ["#profileCard", "#groupCard", "#exportCard"].forEach((x) => $(x).classList.add("hidden")); $("#drop").textContent = "Or drop documents here from your computer (they're read alongside SuiteFiles)";
+  $("#client").value = ""; updateRead(); $("#client").focus();
+};
+// read one client folder (plus any dropped files) and add it to the profile
+async function addToGroup(client, extraJobs, prog, listEl, tag) {
+  const jobs = [];
+  if (client && account && folders.includes(client)) { prog(`<span class="spin"></span>${tag}Finding documents in SuiteFiles…`); jobs.push(...(await sfJobs(client))); }
+  jobs.push(...extraJobs);
+  const res = jobs.length ? await readJobs(jobs, prog, listEl, tag) : [];
+  const Pc = C.merge(res, client || (extraJobs[0] && extraJobs[0].name) || "");
+  group.push({ name: val(Pc.entity.name) || client || "Dropped documents", client: client && folders.includes(client) ? client : "", P: Pc, results: res });
+  linkPicks.delete(client);
+  return res.length;
+}
+function finishGroup() {
+  if (group.length > 1) { groupPeople = C.groupPeople(group); C.enrichFromGroup(group, groupPeople); } else groupPeople = [];
+  renderAll();
 }
 $("#read").onclick = async () => {
-  const client = $("#client").value.trim(); $("#read").disabled = true; results = []; $("#files").innerHTML = ""; $("#progress").classList.remove("hidden");
+  const typed = $("#client").value.trim();
+  const todo = [...picked]; if (folders.includes(typed) && !todo.includes(typed)) todo.push(typed);
+  const fresh = todo.filter((f) => !group.some((g) => g.client === f));
+  const drops = localFiles.map((f) => ({ name: f.name, where: "From this computer", get: async () => f })); localFiles = [];
+  if (!fresh.length && !drops.length) { note(todo.length ? "Those clients are already in this profile." : "Pick a client folder from the list.", "warn"); return; }
+  $("#read").disabled = true; $("#progress").classList.remove("hidden"); note("");
   const prog = (h) => ($("#progress").innerHTML = h);
   try {
-    const jobs = [];
-    if (account && folders.includes(client)) { prog('<span class="spin"></span>Finding documents in SuiteFiles…'); (await collect(client)).forEach((f) => jobs.push({ name: f.name, where: f.path.split("/").slice(2).join(" › "), get: async () => { const r = await fetch(f["@microsoft.graph.downloadUrl"]); return r.blob(); } })); }
-    localFiles.forEach((f) => jobs.push({ name: f.name, where: "From this computer", get: async () => f }));
-    if (!jobs.length) { prog("No documents found in that client's folders."); return; }
-    let i = 0;
-    for (const j of jobs) {
-      i++; const li = document.createElement("li"); li.innerHTML = `<span class="spin"></span><b title="${esc(j.where + " › " + j.name)}">${esc(j.name)}</b>`; $("#files").appendChild(li);
-      prog(`<span class="spin"></span>Reading ${i} of ${jobs.length}: ${esc(j.name)}`);
-      try {
-        const { text, scanned } = await readBlob(j.name, await j.get(), (s) => prog(`<span class="spin"></span>Reading ${i} of ${jobs.length}: ${esc(j.name)}, ${s}`));
-        const r = C.parse(text, j.name); r.where = j.where; r.scanned = scanned; results.push(r);
-        li.innerHTML = `<b title="${esc(j.where + " › " + j.name)}">${esc(j.name)}</b><span class="k ${/other|skip/.test(r.kind) ? "no" : ""}">${esc(r.label)}${r.date ? ", " + C.fmt(r.date) : ""}${scanned ? ", scan" : ""}</span>`;
-      } catch (e) { console.error(e); li.innerHTML = `<b>${esc(j.name)}</b><span class="k no">couldn't open</span>`; }
-    }
-    const used = results.filter((r) => !/other|skip/.test(r.kind)).length;
-    prog(`Read ${jobs.length} documents. ${used} had client details.`);
-    P = C.merge(results, client || (localFiles[0] && localFiles[0].name) || "");
-    renderProfile();
+    const before = group.length; let n = 0;
+    if (!fresh.length) n += await addToGroup("", drops, prog, $("#files"), "");
+    for (const [i, f] of fresh.entries()) n += await addToGroup(f, i === 0 ? drops : [], prog, $("#files"), fresh.length > 1 ? esc(f) + ": " : "");
+    picked = []; renderPicked(); $("#client").value = "";
+    if (before) cur = before; // show the first client just added
+    prog(`Read ${n} document${n === 1 ? "" : "s"} for ${fresh.length || 1} client${fresh.length > 1 ? "s" : ""}.${group.length > 1 ? ` The profile now has ${group.length} entities. Use the buttons at the top of the profile to switch between them.` : ""}`);
+    finishGroup();
   } catch (e) { console.error(e); prog("Something went wrong reading the documents. Check your connection and try again."); }
   finally { updateRead(); }
 };
+// ---------- linked entities
+function suggestLinks() {
+  const inGroup = new Set(group.map((g) => g.client).filter(Boolean));
+  const names = [...new Set(group.flatMap((g) => g.P.related || []))];
+  for (const m of C.matchFolders(names, folders, group[0] && group[0].client)) if (!inGroup.has(m.folder) && !linkPicks.has(m.folder)) linkPicks.set(m.folder, { because: m.because, checked: true });
+  for (const f of inGroup) linkPicks.delete(f);
+}
+function renderGroup() {
+  $("#groupCard").classList.remove("hidden");
+  if (!account || !folders.length) { $("#groupBody").innerHTML = `<p class="lead" style="margin:0 0 10px">Sign in with Microsoft to look for linked client folders.</p>`; $("#readLinks").disabled = true; return; }
+  suggestLinks();
+  const done = group.slice(1).map((g) => `<li class="done">✓ ${esc(g.name)}<small>Read, ${g.results.length} document${g.results.length === 1 ? "" : "s"}</small></li>`).join("");
+  const picks = [...linkPicks].map(([f, x], i) => `<li><label><input type="checkbox" data-link="${esc(f)}" ${x.checked ? "checked" : ""}><span>${esc(f)}<small>${x.because ? "Found as " + esc(x.because) : "Added by you"}</small></span></label></li>`).join("");
+  $("#groupBody").innerHTML = picks || done ? `<ul class="linklist">${picks}${done}</ul>` : `<p class="lead" style="margin:0 0 10px">No other client folders match the people and entities in this profile. Add any that belong to the group below.</p>`;
+  $("#readLinks").disabled = ![...linkPicks.values()].some((x) => x.checked);
+}
+$("#groupBody").addEventListener("change", (e) => { const f = e.target.dataset && e.target.dataset.link; if (f && linkPicks.has(f)) { linkPicks.get(f).checked = e.target.checked; $("#readLinks").disabled = ![...linkPicks.values()].some((x) => x.checked); } });
+$("#addLinkBtn").onclick = () => {
+  const f = $("#addLink").value.trim();
+  if (!folders.includes(f)) { $("#groupProgress").textContent = "Pick a client folder from the list."; return; }
+  if (group.some((g) => g.client === f)) { $("#groupProgress").textContent = "That folder has already been read."; return; }
+  linkPicks.set(f, { because: "", checked: true }); $("#addLink").value = ""; $("#groupProgress").textContent = ""; renderGroup();
+};
+$("#readLinks").onclick = async () => {
+  const todo = [...linkPicks].filter(([, x]) => x.checked).map(([f]) => f); if (!todo.length) return;
+  $("#readLinks").disabled = true; const prog = (h) => ($("#groupProgress").innerHTML = h);
+  try {
+    for (const f of todo) await addToGroup(f, [], prog, $("#groupFiles"), esc(f) + ": ");
+    groupPeople = C.groupPeople(group); C.enrichFromGroup(group, groupPeople);
+    const filled = group.reduce((a, g) => a + g.P.officers.filter((o) => o.filled && o.filled.length).length, 0);
+    prog(`Read ${todo.length} linked folder${todo.length === 1 ? "" : "s"}. ${filled ? filled + " officeholder record" + (filled === 1 ? " was" : "s were") + " filled in from other entities in the group." : "Nothing new needed filling in from the group."} Use the buttons at the top of the profile to switch between entities.`);
+    renderAll();
+  } catch (e) { console.error(e); prog("Something went wrong reading the linked folders. Try again."); }
+  finally { $("#readLinks").disabled = ![...linkPicks.values()].some((x) => x.checked); }
+};
+function renderAll() { if (cur >= group.length) cur = 0; P = group[cur].P; results = group[cur].results; renderProfile(); renderGroup(); updateRead(); }
 const drop = $("#drop");
 drop.onclick = () => $("#file").click(); drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("#file").click(); } };
 $("#file").onchange = (e) => { addLocal([...e.target.files]); e.target.value = ""; };
@@ -692,26 +1011,33 @@ function table(rows, cols, path) {
   if (!rows.length) return `<p style="font-size:13px;color:var(--ix-muted);margin:0">None found.</p>`;
   return `<div class="tablewrap"><table><thead><tr>${cols.map((c) => `<th>${esc(c[1])}</th>`).join("")}<th></th></tr></thead><tbody>${rows.map((r, i) => `<tr>${cols.map(([k, , d]) => {
     const v = r[k] ?? "", sens = SENS.has(k) && !$("#showSens").checked && v;
-    return `<td><input data-path="${path}" data-i="${i}" data-k="${k}" data-date="${d ? 1 : ""}" value="${sens ? "••••••" : esc(d ? C.fmtAu(v) : v)}" ${sens ? "readonly" : ""} placeholder="-"></td>`; }).join("")}<td>${r.newer ? '<span class="tag">Newer than ASIC extract</span>' : ""}</td></tr>`).join("")}</tbody></table></div>`;
+    return `<td><input data-path="${path}" data-i="${i}" data-k="${k}" data-date="${d ? 1 : ""}" value="${sens ? "••••••" : esc(d ? C.fmtAu(v) : v)}" ${sens ? "readonly" : ""} placeholder="-"></td>`; }).join("")}<td>${r.newer ? '<span class="tag">Newer than ASIC extract</span> ' : ""}${r.check ? '<span class="tag">Check this: trust not named</span> ' : ""}${r.filled && r.filled.length ? `<span class="tag fill" title="${esc(r.filled.join("; "))}">Filled from the group</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
 }
 function renderProfile() {
   const k = val(P.entity.kind), isCo = /^Company/.test(k), isTrust = /Trust|SMSF/.test(k);
   $("#profileCard").classList.remove("hidden"); $("#exportCard").classList.remove("hidden");
   $("#pTitle").textContent = `${val(P.entity.name) || "Client"} (${k})`;
+  const tabs = group.length > 1 ? `<div class="tabs" role="tablist" aria-label="Entities in the group">${group.map((g, i) => `<button type="button" class="tabbtn" role="tab" data-tab="${i}" aria-selected="${i === cur}">${esc(g.name)}<small>${esc(val(g.P.entity.kind))}${i === 0 ? ", main client" : ""}</small></button>`).join("")}</div>` : "";
   $("#alerts").innerHTML = P.alerts.map((a) => `<div class="alert">${esc(a)}</div>`).join("");
-  let h = `<h3>Entity</h3><div class="grid">${field(P.entity, "name", "Legal name", { obj: "entity" })}${field(P.entity, "kind", "Entity type", { obj: "entity" })}${field(P.entity, "abn", "ABN", { obj: "entity" })}${isCo ? field(P.company, "acn", "ACN", { obj: "company" }) : ""}${field(P.entity, "tfn", "TFN", { obj: "entity" })}${field(P.entity, "gst", "GST", { obj: "entity" })}${field(P.entity, "gstFrom", "GST registered from", { obj: "entity", date: 1 })}</div>`;
+  let h = tabs + `<h3>Entity</h3><div class="grid">${field(P.entity, "name", "Legal name", { obj: "entity" })}${field(P.entity, "kind", "Entity type", { obj: "entity" })}${field(P.entity, "abn", "ABN", { obj: "entity" })}${field(P.entity, "abnStatus", "ABN status", { obj: "entity" })}${isCo ? field(P.company, "acn", "ACN", { obj: "company" }) : ""}${field(P.entity, "tfn", "TFN", { obj: "entity" })}${field(P.entity, "entityType", "ABN entity type", { obj: "entity" })}${field(P.entity, "anzsic", "Main business activity (ANZSIC)", { obj: "entity" })}${field(P.entity, "postal", "Postal address (ABN record)", { obj: "entity" })}${field(P.entity, "business", "Business address (ABN record)", { obj: "entity" })}${field(P.entity, "email", "Email (ABN record)", { obj: "entity" })}</div>`;
+  h += `<h3>Tax registrations</h3><div class="grid">${field(P.entity, "gst", "GST", { obj: "entity" })}${field(P.entity, "gstFrom", "GST registered from", { obj: "entity", date: 1 })}${field(P.entity, "gstPeriod", "GST period", { obj: "entity" })}${field(P.entity, "gstBasis", "GST accounting basis", { obj: "entity" })}${field(P.entity, "gstReporting", "GST reporting method", { obj: "entity" })}${field(P.entity, "paygw", "PAYG withholding", { obj: "entity" })}${field(P.entity, "paygwFrom", "PAYG withholding from", { obj: "entity", date: 1 })}${field(P.entity, "paygwCycle", "PAYG withholding cycle", { obj: "entity" })}${field(P.entity, "ftc", "Fuel tax credits", { obj: "entity" })}${field(P.entity, "ftcFrom", "Fuel tax credits from", { obj: "entity", date: 1 })}</div>`;
   if (isCo || P.company.name) {
     h += `<h3>Company</h3><div class="grid">${field(P.company, "registered", "Registration date", { obj: "company", date: 1 })}${field(P.company, "nextReview", "Next annual review", { obj: "company", date: 1 })}${field(P.company, "state", "State of registration", { obj: "company" })}${field(P.company, "type", "Company type", { obj: "company" })}${field(P.company, "cls", "Class", { obj: "company" })}${field(P.company, "subclass", "Sub class", { obj: "company" })}${field(P.company, "regOffice", "Registered office", { obj: "company" })}${field(P.company, "ppb", "Principal place of business", { obj: "company" })}${field(P.company, "postal", "Postal / ASIC contact address", { obj: "company" })}${field(P.company, "holding", "Ultimate holding company", { obj: "company" })}${field(P.company, "publicOfficer", "Public officer", { obj: "company" })}${field(P.company, "last484", "Last Form 484 lodged (per ASIC)", { obj: "company" })}</div>`;
-    h += `<h3>Officeholders (current)</h3>` + table(P.officers, [["role", "Position"], ["name", "Name"], ["appointed", "Appointed", 1], ["address", "Residential address"], ["dob", "Date of birth", 1], ["pob", "Place of birth"], ["directorId", "Director ID"]], "officers");
+    h += `<h3>Officeholders (current)</h3>` + table(P.officers, [["role", "Position"], ["name", "Name"], ["appointed", "Appointed", 1], ["address", "Residential address"], ["dob", "Date of birth", 1], ["pob", "Place of birth"], ["directorId", "Director ID"], ["email", "Email"], ["phone", "Mobile"]], "officers");
     if (P.officerHistory && P.officerHistory.length) h += `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--ix-deep)">Former officeholders (${P.officerHistory.length})</summary>${table(P.officerHistory, [["role", "Position"], ["name", "Name"], ["appointed", "Appointed", 1], ["ceased", "Ceased", 1]], "officerHistory")}</details>`;
-    h += `<h3>Shareholders</h3>` + table(P.members.map((m) => ({ ...m, holder: m.holders.map((x) => x.name).join(" & "), address: m.holders.map((x) => x.address).join(" / "), ben: m.beneficial ? "Yes" : "No" })), [["holder", "Member"], ["cls", "Class"], ["number", "Shares"], ["ben", "Beneficially held"], ["onBehalfOf", "Held for"], ["address", "Address"]], "membersView");
+    h += `<h3>Shareholders (current)</h3><p style="font-size:12.5px;color:var(--ix-muted);margin:-4px 0 8px">Shares that aren't beneficially held belong to a trust. The member on the register holds them as trustee, so set the trust up as the shareholder in XPM and Karbon.</p>` + table(P.members.map((m) => ({ ...m, holder: m.holders.map((x) => x.name).join(" & "), address: [...new Set(m.holders.map((x) => x.address))].join(" / "), ben: m.beneficial ? "Yes" : "No", check: !m.beneficial && !m.onBehalfOf })), [["holder", "Member on the register"], ["cls", "Class"], ["number", "Shares"], ["ben", "Beneficially held"], ["onBehalfOf", "Owned by (trust)"], ["address", "Address"]], "membersView");
+    if (P.memberHistory && P.memberHistory.length) h += `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--ix-deep)">Former shareholders (${P.memberHistory.length})</summary><div class="tablewrap"><table class="ptable"><thead><tr><th>Member</th><th>Held for</th><th>Entered</th><th>Ceased</th></tr></thead><tbody>${P.memberHistory.map((m) => `<tr><td>${esc(m.holders.map((x) => x.name).join(" & "))}</td><td>${esc(m.onBehalfOf || "")}</td><td>${esc(C.fmtAu(m.entered || ""))}</td><td>${esc(C.fmtAu(m.ceased || ""))}</td></tr>`).join("")}</tbody></table></div></details>`;
   }
   if (isTrust || P.trust.name) {
     h += `<h3>Trust</h3><div class="grid">${field(P.trust, "name", "Trust name", { obj: "trust" })}${field(P.trust, "type", "Trust type", { obj: "trust" })}${field(P.trust, "deedDate", "Deed date", { obj: "trust", date: 1 })}${field(P.trust, "settlor", "Settlor", { obj: "trust" })}${field(P.trust, "trustees", "Trustee(s), current", { obj: "trust" })}${field(P.trust, "appointors", "Appointor(s), current", { obj: "trust" })}${field(P.trust, "altAppointors", "Alternate appointor(s)", { obj: "trust" })}${field(P.trust, "primary", "Primary / named beneficiaries", { obj: "trust" })}${field(P.trust, "unitholders", "Unitholders", { obj: "trust" })}${field(P.trust, "members", "Fund members", { obj: "trust" })}${field(P.trust, "law", "Applicable law", { obj: "trust" })}${field(P.trust, "vesting", "Vesting date", { obj: "trust" })}${field(P.trust, "fteYear", "Family trust election year", { obj: "trust" })}${field(P.trust, "specified", "FTE specified individual", { obj: "trust" })}</div>`;
     if (val(P.trust.secondary)) h += `<h3>Other beneficiaries (deed wording)</h3><div class="longtext">${esc(val(P.trust.secondary))}${val(P.trust.tertiary) ? "<br><br>" + esc(val(P.trust.tertiary)) : ""}</div>`;
     if (P.trust.variations && P.trust.variations.length) h += `<p style="font-size:12.5px;color:var(--ix-muted)">Deeds of variation: ${P.trust.variations.map((x) => esc(C.fmt(x.date) || x.file)).join(", ")}</p>`;
   }
-  h += `<h3>Contact</h3><div class="grid">${field({ e: { value: P.contact.emails.join("; ") } }, "e", "Email (from the engagement letter)", { obj: "emails" })}${field({ p: { value: P.contact.phones.join("; ") } }, "p", "Phone", { obj: "phones" })}</div>`;
+  if (group.length > 1 && groupPeople.length) {
+    const sens = !$("#showSens").checked, m = (x) => (x ? (sens ? "••••••" : esc(x)) : "");
+    h += `<h3>People across the group</h3><p style="font-size:12.5px;color:var(--ix-muted);margin:-4px 0 8px">Everyone found in the ${group.length} entities read, with the newest details from any of them.</p><div class="tablewrap"><table class="ptable"><thead><tr><th>Name</th><th>Roles</th><th>Director ID</th><th>Date of birth</th><th>Address</th><th>Email</th><th>Mobile</th></tr></thead><tbody>${groupPeople.map((q) => `<tr><td>${esc(q.name)}</td><td>${q.roles.map(esc).join("<br>")}</td><td>${m(val(q.directorId))}</td><td>${m(C.fmtAu(val(q.dob)))}</td><td title="${esc(q.address ? "From " + q.address.entity : "")}">${esc(val(q.address))}</td><td>${esc(val(q.email))}</td><td>${esc(val(q.phone))}</td></tr>`).join("")}</tbody></table></div>`;
+  }
+  h += `<h3>Contact</h3><div class="grid">${field({ e: { value: P.contact.emails.join("; ") } }, "e", "Email", { obj: "emails" })}${field({ p: { value: P.contact.phones.join("; ") } }, "p", "Phone", { obj: "phones" })}</div>`;
   const unused = results.filter((r) => /other/.test(r.kind)).length;
   h += `<p style="font-size:12px;color:var(--ix-muted);margin-top:18px">${results.length} documents read${unused ? `, ${unused} had no client details (correspondence, workpapers and the like)` : ""}. Anything showing "Not found" wasn't in the documents, so check Karbon, the client or a fresh ASIC search.</p>`;
   $("#profile").innerHTML = h;
@@ -726,26 +1052,33 @@ $("#profile").addEventListener("change", (e) => {
     else P[el.dataset.path][i][k] = v;
   }
 });
-$("#profile").addEventListener("click", (e) => { const b = e.target.closest("[data-copy]"); if (b) { navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copied"; setTimeout(() => (b.textContent = "Copy"), 1200); } });
+$("#profile").addEventListener("click", (e) => { const t = e.target.closest("[data-tab]"); if (t) { cur = +t.dataset.tab; renderAll(); document.querySelector(`[data-tab="${cur}"]`).focus(); return; } const b = e.target.closest("[data-copy]"); if (b) { navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copied"; setTimeout(() => (b.textContent = "Copy"), 1200); } });
 
 /* ---------- exports ---------- */
 const today = () => new Date().toISOString().slice(0, 10).replace(/-/g, "");
 const safe = (s) => String(s || "").replace(/["*:<>?\/\\|]/g, "").trim();
-function profileRows(sens) {
+function profileRows(sens, Q) {
+  const P = Q || group[cur].P;
   const rows = [], add = (sec, label, f, date) => { let v = val(f); if (Array.isArray(v)) v = v.join("; "); if (date) v = C.fmtAu(v); rows.push({ Section: sec, Detail: label, Value: v || "", Source: (f && f.file) || "", "Source date": f && f.date ? C.fmtAu(f.date) : "" }); };
-  add("Entity", "Legal name", P.entity.name); add("Entity", "Entity type", P.entity.kind); add("Entity", "ABN", P.entity.abn); if (sens) add("Entity", "TFN", P.entity.tfn); add("Entity", "GST", P.entity.gst);
+  add("Entity", "Legal name", P.entity.name); add("Entity", "Entity type", P.entity.kind); add("Entity", "ABN", P.entity.abn); if (sens) add("Entity", "TFN", P.entity.tfn);
+  [["abnStatus", "ABN status"], ["entityType", "ABN entity type"], ["anzsic", "Main business activity"], ["postal", "Postal address (ABN record)"], ["business", "Business address (ABN record)"], ["email", "Email (ABN record)"], ["gst", "GST"], ["gstFrom", "GST registered from", 1], ["gstPeriod", "GST period"], ["gstBasis", "GST accounting basis"], ["gstReporting", "GST reporting method"], ["paygw", "PAYG withholding"], ["paygwFrom", "PAYG withholding from", 1], ["paygwCycle", "PAYG withholding cycle"], ["ftc", "Fuel tax credits"], ["ftcFrom", "Fuel tax credits from", 1]].forEach(([k, l, d]) => P.entity[k] && add("Entity", l, P.entity[k], d));
   [["acn", "ACN"], ["registered", "Registration date", 1], ["nextReview", "Next annual review", 1], ["state", "State"], ["type", "Type"], ["cls", "Class"], ["subclass", "Sub class"], ["regOffice", "Registered office"], ["ppb", "Principal place of business"], ["postal", "Postal address"], ["holding", "Ultimate holding company"], ["publicOfficer", "Public officer"], ["last484", "Last Form 484 lodged"]].forEach(([k, l, d]) => P.company[k] && add("Company", l, P.company[k], d));
   [["name", "Trust name"], ["type", "Trust type"], ["deedDate", "Deed date", 1], ["settlor", "Settlor"], ["trustees", "Trustees"], ["appointors", "Appointors"], ["altAppointors", "Alternate appointors"], ["primary", "Primary beneficiaries"], ["secondary", "Other beneficiaries (deed wording)"], ["unitholders", "Unitholders"], ["members", "Fund members"], ["law", "Applicable law"], ["vesting", "Vesting date"], ["fteYear", "FTE year"], ["specified", "FTE specified individual"]].forEach(([k, l, d]) => P.trust[k] && add("Trust", l, P.trust[k], d));
   P.officers.forEach((o) => rows.push({ Section: "Officeholder", Detail: o.role, Value: o.name + " (appointed " + C.fmtAu(o.appointed) + ")", Source: o.source || "", "Source date": C.fmtAu(o.sourceDate || "") }));
+  P.members.forEach((m) => rows.push({ Section: "Shareholder", Detail: (m.className || m.cls || "") + " shares", Value: `${m.onBehalfOf && !m.beneficial ? m.onBehalfOf + ": " + m.number + " shares, held by " + m.holders.map((h) => h.name).join(" & ") + " as trustee" : m.holders.map((h) => h.name).join(" & ") + ": " + m.number + " shares" + (m.beneficial ? "" : ", not beneficially held (trust not named, check)")}`, Source: m.file || "", "Source date": C.fmtAu(m.date || "") }));
   return rows;
 }
 $("#xlsx").onclick = () => {
-  const sens = $("#inclSens").checked, X = C.exportsFor(P, { sensitive: sens }), wb = XLSX.utils.book_new();
+  const sens = $("#inclSens").checked, wb = XLSX.utils.book_new(), many = group.length > 1;
+  const useful = group.filter((g, i) => i === 0 || g.results.some((r) => !/other|skip/.test(r.kind))); // folders with nothing readable add empty rows
+  const Xs = useful.map((g) => C.exportsFor(g.P, { sensitive: sens })), X = {};
+  for (const k of Object.keys(Xs[0])) X[k] = Xs.flatMap((x) => x[k]);
   const sheet = (name, rows) => { const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Note: "Nothing found for this entity type" }]); ws["!cols"] = Object.keys(rows[0] || { Note: 1 }).map((k) => ({ wch: Math.min(48, Math.max(12, k.length + 2, ...rows.map((r) => String(r[k] ?? "").length + 1))) })); XLSX.utils.book_append_sheet(wb, ws, name); };
-  sheet("Profile", profileRows(sens)); sheet("Karbon Organisations", X.karbonOrg); sheet("Karbon People", X.karbonPeople); sheet("XPM Client", X.xpmClient); sheet("XPM Relationships", X.xpmRel);
+  sheet("Profile", useful.flatMap((g) => profileRows(sens, g.P).map((r) => (many ? { Entity: g.name, ...r } : r)))); sheet("Karbon Organisations", X.karbonOrg); sheet("Karbon People", X.karbonPeople); sheet("XPM Client", X.xpmClient); sheet("XPM Relationships", X.xpmRel);
   sheet("CAS 360 Company", X.casCompany); sheet("CAS 360 Officers", X.casOfficers); sheet("CAS 360 Members", X.casMembers); sheet("CAS 360 Trust", X.casTrust);
-  sheet("Sources", results.map((r) => ({ Document: r.file, Folder: r.where || "", "Read as": r.label, "Document date": C.fmtAu(r.date || ""), Scan: r.scanned ? "Yes" : "" })));
-  XLSX.writeFile(wb, `${today()} Client Profile - ${safe(val(P.entity.name) || P.client)}.xlsx`);
+  if (many) sheet("Group People", groupPeople.map((q) => ({ Name: q.name, Roles: q.roles.join("; "), "Director ID": sens ? val(q.directorId) : val(q.directorId) ? "On file" : "", "Date of Birth": sens ? C.fmtAu(val(q.dob)) : "", Address: val(q.address), Email: val(q.email), Mobile: val(q.phone) })));
+  sheet("Sources", group.flatMap((g) => g.results.map((r) => ({ ...(many ? { Entity: g.name } : {}), Document: r.file, Folder: r.where || "", "Read as": r.label, "Document date": C.fmtAu(r.date || ""), Scan: r.scanned ? "Yes" : "" }))));
+  XLSX.writeFile(wb, `${today()} Client Profile - ${safe(group[0].name)}${many ? " group" : ""}.xlsx`);
   $("#exportMsg").textContent = "Spreadsheet downloaded.";
 };
 function buildPdf() {
@@ -756,7 +1089,7 @@ function buildPdf() {
   line(`Client Profile: ${val(P.entity.name) || P.client}`, 16, true, [86, 119, 108]); line(`${val(P.entity.kind)}. Prepared ${C.fmt(new Date().toISOString().slice(0, 10))} from documents in SuiteFiles. Check before relying on it.`, 9, false, [95, 102, 100]); y += 3;
   if (P.alerts.length) { line("Check these", 11, true, [154, 91, 46]); P.alerts.forEach((a) => line("• " + a, 9, false, [154, 91, 46])); y += 2; }
   let sec = ""; for (const r of profileRows(sens)) { if (r.Section !== sec) { sec = r.Section; y += 2; line(sec, 12, true, [86, 119, 108]); } line(`${r.Detail}: ${r.Value || "Not found"}${r.Source ? "   (" + r.Source + (r["Source date"] ? ", " + r["Source date"] : "") + ")" : ""}`, 9); }
-  if (P.members.length) { y += 2; line("Shareholders", 12, true, [86, 119, 108]); P.members.forEach((m) => line(`${m.holders.map((h) => h.name).join(" & ")}: ${m.number} ${m.className || m.cls} shares, ${m.beneficial ? "beneficially held" : "not beneficially held"}${m.onBehalfOf ? " (for " + m.onBehalfOf + ")" : ""}`, 9)); }
+
   if (sens && P.officers.length) { y += 2; line("Officeholder personal details", 12, true, [86, 119, 108]); P.officers.forEach((o) => line(`${o.name} (${o.role}): born ${C.fmtAu(o.dob) || "not found"} ${o.pob || ""}; ${o.address || "address not found"}; Director ID ${o.directorId || "not found"}`, 9)); }
   y += 3; line("Documents read", 12, true, [86, 119, 108]); results.filter((r) => !/other|skip/.test(r.kind)).forEach((r) => line(`${r.file} (${r.label}${r.date ? ", " + C.fmtAu(r.date) : ""})`, 8.5, false, [95, 102, 100]));
   return doc;
@@ -764,8 +1097,8 @@ function buildPdf() {
 const pdfName = () => `${today()} Client Profile - ${safe(val(P.entity.name) || P.client)}.pdf`;
 $("#dlPdf").onclick = () => { buildPdf().save(pdfName()); $("#exportMsg").textContent = "PDF downloaded."; };
 $("#savePdf").onclick = async () => {
-  const client = $("#client").value.trim();
-  if (!account || !folders.includes(client)) { $("#exportMsg").textContent = "Sign in and choose the client folder to save to SuiteFiles."; return; }
+  const client = group[cur] && group[cur].client;
+  if (!account || !client || !folders.includes(client)) { $("#exportMsg").textContent = "Sign in and read the client from SuiteFiles to save there. You can still download the PDF."; return; }
   const sub = /^Company/.test(val(P.entity.kind)) ? "Corporate Compliance" : "Permanent", name = pdfName(), blob = buildPdf().output("blob");
   $("#exportMsg").innerHTML = '<span class="spin"></span>Saving…';
   try {
@@ -775,7 +1108,7 @@ $("#savePdf").onclick = async () => {
     let r = await graph("PUT", `/drives/${CONFIG.driveId}/root:/${enc(dir + "/" + name)}:/content?@microsoft.graph.conflictBehavior=fail`, blob, { "Content-Type": "application/pdf" });
     if (r.status === 409) { if (!confirm(`${name} is already in ${sub}. Replace it?`)) { $("#exportMsg").textContent = "Not saved."; return; } r = await graph("PUT", `/drives/${CONFIG.driveId}/root:/${enc(dir + "/" + name)}:/content?@microsoft.graph.conflictBehavior=replace`, blob, { "Content-Type": "application/pdf" }); }
     if (!r.ok) throw new Error(r.status);
-    const j = await r.json(); $("#exportMsg").innerHTML = `Saved to ${esc(sub)}. <a href="${esc(j.webUrl || "#")}" target="_blank" rel="noopener">Open it</a>`;
+    const j = await r.json(); $("#exportMsg").innerHTML = `Saved to ${esc(client)} › ${esc(sub)}. <a href="${esc(j.webUrl || "#")}" target="_blank" rel="noopener">Open it</a>`;
   } catch (e) { console.error(e); $("#exportMsg").textContent = "Couldn't save to SuiteFiles. Try again, or download the PDF instead."; }
 };
 $("#copyKarbon").onclick = () => {
